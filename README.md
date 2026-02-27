@@ -1,4 +1,5 @@
 Campus Share
+
 A Modern, Secure Academic Resource Hub
 
 Campus Share is a full-stack platform built with the PERN stack 
