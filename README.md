@@ -28,12 +28,12 @@ Bash
 git clone https://github.com/omkargitcs/campus-share.git
 cd campus-share
 
-
 Setup Backend:
 Bash
 cd server
 npm install
-# Create a .env file based on .env.example
+
+Create a .env file based on .env.example
 npx prisma generate
 npm start
 
