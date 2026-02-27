@@ -1,5 +1,14 @@
+# Ignore dependencies in both folders
+node_modules/
+client/node_modules/
+server/node_modules/
 
-echo "node_modules/" > .gitignore
-echo ".env" >> .gitignore
-echo "dist/" >> .gitignore
-echo ".vite/" >> .gitignore
+# Ignore environment secrets
+.env
+server/.env
+client/.env
+
+# Ignore build files
+dist/
+client/dist/
+.vite/
