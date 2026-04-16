@@ -1,146 +1,177 @@
-import React, { useState } from "react";
-import { X, UploadCloud, Loader2, FileCheck } from "lucide-react";
-import API from "../api";
-import axios from "axios";
-import { toast } from "sonner";
+import React, { useState, useCallback } from "react";
+import { X, Upload, FileText, CheckCircle2, Loader2 } from "lucide-react";
+
 const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
   const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "Notes",
-    price: "",
-  });
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("Computer Science");
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState("");
 
-  if (!isOpen) return null;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!file) return alert("Please select a file first");
-    setLoading(true);
-
-    try {
-      const data = new FormData();
-      data.append("file", file);
-      data.append("upload_preset", "campus_share");
-      data.append("cloud_name", "dqqbxk3ip");
-
-      const cloudinaryRes = await axios.post(
-        "https://api.cloudinary.com/v1_1/dqqbxk3ip/auto/upload",
-        data,
-      );
-      const fileUrl = cloudinaryRes.data.secure_url;
-
-      await API.post("/resources", {
-        ...formData,
-        fileUrl,
-        price: parseFloat(formData.price) || 0,
-      });
-
-      onUploadSuccess();
-      onClose();
-      setFile(null); // Reset file
-      alert("Resource Shared Successfully!");
-    } catch (err) {
-      console.error("Upload Error:", err);
-      alert("Upload Failed. Check console for details.");
-    } finally {
-      setLoading(false);
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile && selectedFile.type === "application/pdf") {
+      setFile(selectedFile);
+      setError("");
+    } else {
+      setError("Please select a valid PDF file.");
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) return setError("Please select a file first.");
+
+    setIsUploading(true);
+    setError("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", title);
+    formData.append("category", category);
+
+    try {
+      // Extracting token from localStorage for your IAM system
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        "http://localhost:5000/api/resources/upload",
+        {
+          method: "POST",
+          headers: {
+            // IMPORTANT: Do NOT set Content-Type; the browser sets it for FormData
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        },
+      );
+
+      if (response.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+
+      if (!response.ok) throw new Error("Upload failed. Please try again.");
+
+      const result = await response.json();
+      onUploadSuccess(result);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-[#18181b] border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl">
-        <div className="flex justify-between items-center p-6 border-b border-zinc-800">
-          <h2 className="text-xl font-bold">Upload Resource</h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-white">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+          <h2 className="text-xl font-bold text-white">Upload Resource</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition"
+          >
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <input
-            type="text"
-            placeholder="Title (e.g. OS Lecture Notes)"
-            required
-            className="w-full bg-[#09090b] border border-zinc-800 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500"
-            onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
-            }
-          />
-
-          <textarea
-            placeholder="Description"
-            required
-            className="w-full bg-[#09090b] border border-zinc-800 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 h-24"
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-          />
-
-          <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-6 flex flex-col items-center justify-center hover:border-blue-500 transition-colors group">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* File Drop Zone */}
+          <div
+            className={`relative border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center justify-center gap-3
+            ${file ? "border-emerald-500/50 bg-emerald-500/5" : "border-zinc-700 hover:border-blue-500/50 hover:bg-blue-500/5"}`}
+          >
             <input
               type="file"
-              className="absolute inset-0 opacity-0 cursor-pointer z-10"
-              onChange={(e) => setFile(e.target.files[0])}
-              required
+              onChange={handleFileChange}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              accept=".pdf"
             />
             {file ? (
-              <div className="flex items-center gap-2 text-blue-400">
-                <FileCheck size={24} />
-                <span className="text-sm font-medium truncate max-w-[200px]">
-                  {file.name}
-                </span>
-              </div>
+              <>
+                <div className="h-12 w-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-emerald-400 truncate max-w-[200px]">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              </>
             ) : (
               <>
-                <UploadCloud
-                  className="text-zinc-500 group-hover:text-blue-400 mb-2"
-                  size={32}
-                />
-                <p className="text-zinc-500 text-sm">
-                  Click to select PDF or Image
-                </p>
+                <div className="h-12 w-12 rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-400">
+                  <Upload size={24} />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-zinc-300">
+                    Click or drag PDF to upload
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    Maximum file size: 10MB
+                  </p>
+                </div>
               </>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <select
-              className="bg-[#09090b] border border-zinc-800 rounded-lg p-3 outline-none"
-              onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
-              }
-            >
-              <option>Notes</option>
-              <option>Book</option>
-              <option>PYQ</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Price ($)"
-              className="bg-[#09090b] border border-zinc-800 rounded-lg p-3 outline-none"
-              onChange={(e) =>
-                setFormData({ ...formData, price: e.target.value })
-              }
-            />
+          {/* Inputs */}
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">
+                Resource Title
+              </label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Unit 1 - Operating Systems"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">
+                Category
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+              >
+                <option>Computer Science</option>
+                <option>Information Technology</option>
+                <option>Mathematics</option>
+                <option>Physics</option>
+              </select>
+            </div>
           </div>
 
+          {error && (
+            <p className="text-xs text-red-400 bg-red-400/10 p-3 rounded-lg border border-red-400/20">
+              {error}
+            </p>
+          )}
+
           <button
-            disabled={loading}
             type="submit"
-            className="w-full bg-zinc-100 text-zinc-900 font-bold py-3 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+            disabled={isUploading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2"
           >
-            {loading ? (
+            {isUploading ? (
               <>
-                <Loader2 className="animate-spin" /> Uploading...
+                <Loader2 size={18} className="animate-spin" />
+                Processing...
               </>
             ) : (
-              <>
-                <UploadCloud size={20} /> Post Resource
-              </>
+              "Upload to CampusShare"
             )}
           </button>
         </form>

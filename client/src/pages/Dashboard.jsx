@@ -10,10 +10,12 @@ import {
 import API from "../api";
 import UploadModal from "../components/UploadModal";
 import Navbar from "../components/Navbar";
+import ProfileSidebar from "../components/ProfileSidebar"; // Already imported
 import { toast } from "sonner";
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSidebarOpen, setSidebarOpen] = useState(false); // State to control sidebar
   const [resources, setResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -109,15 +111,24 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#09090b] text-white font-sans">
+      {/* 1. Updated Navbar to handle Profile click */}
       <Navbar
         onLogout={() => {
           localStorage.removeItem("token");
           window.location.href = "/login";
         }}
         onUploadClick={() => setIsModalOpen(true)}
+        onProfileClick={() => setSidebarOpen(true)} // Ensure your Navbar has this prop
+      />
+
+      {/* 2. Added the ProfileSidebar component */}
+      <ProfileSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <main className="max-w-7xl mx-auto p-6 md:p-8">
+        {/* STATS SECTION */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-2xl">
             <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1">
@@ -145,6 +156,7 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* SEARCH & FILTERS */}
         <div className="space-y-6 mb-10">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="relative w-full md:w-96">
@@ -202,6 +214,7 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* RESOURCE GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredResources.length > 0 ? (
             filteredResources.map((res) => (

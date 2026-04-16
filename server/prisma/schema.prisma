@@ -24,6 +24,8 @@ model Resource {
   category    String   
   fileUrl     String?  
   price       Float    @default(0)
+  views       Int      @default(0)    
+  downloads   Int      @default(0)    
   ownerId     String
   owner       User     @relation(fields: [ownerId], references: [id])
   createdAt   DateTime @default(now())
