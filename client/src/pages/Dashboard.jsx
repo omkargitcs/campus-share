@@ -12,6 +12,7 @@ import UploadModal from "../components/UploadModal";
 import Navbar from "../components/Navbar";
 import ProfileSidebar from "../components/ProfileSidebar"; // Already imported
 import { toast } from "sonner";
+import SkeletonCard from "../components/SkeletonCard";
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [viewMode, setViewMode] = useState("all");
+  const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("token");
   let currentUserId = null;
@@ -34,10 +36,13 @@ const Dashboard = () => {
 
   const fetchResources = async () => {
     try {
+      setLoading(true);
       const { data } = await API.get("/resources");
       setResources(data);
     } catch (err) {
       toast.error("Failed to load resources. Check your connection.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -216,7 +221,9 @@ const Dashboard = () => {
 
         {/* RESOURCE GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredResources.length > 0 ? (
+          {loading ? (
+            [...Array(6)].map((_, index) => <SkeletonCard key={index} />)
+          ) : filteredResources.length > 0 ? (
             filteredResources.map((res) => (
               <div
                 key={res.id}

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { UserPlus, Mail, Lock, Loader2, Rocket } from "lucide-react";
+import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
 import API from "../api";
+import CampusShareLogo from "../components/CampusShareLogo"; // Make sure this exists!
 
 const Register = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -29,17 +30,21 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-[#121214] border border-zinc-800 rounded-2xl shadow-2xl p-8">
-        <div className="text-center mb-8">
-          <div className="bg-emerald-500/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
-            <Rocket className="text-emerald-500" size={32} />
-          </div>
-          <h2 className="text-3xl font-bold text-zinc-100 tracking-tight">
+    <div className="min-h-screen bg-[#09090b] text-white flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Glows */}
+      <div className="absolute top-[20%] left-[20%] w-[30%] h-[30%] bg-blue-600/5 blur-[120px] rounded-full"></div>
+      <div className="absolute bottom-[20%] right-[20%] w-[30%] h-[30%] bg-emerald-600/5 blur-[120px] rounded-full"></div>
+
+      {/* Main Card */}
+      <div className="relative w-full max-w-lg bg-zinc-900/50 border border-zinc-800 backdrop-blur-xl p-10 md:p-12 rounded-3xl shadow-2xl">
+        <div className="text-center mb-10">
+          <CampusShareLogo className="w-20 h-20 mx-auto mb-6" />
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-100">
             Join CampusShare
-          </h2>
-          <p className="text-zinc-500 mt-2 text-sm">
-            Create an account to start sharing notes
+          </h1>
+          <p className="text-zinc-500 text-base mt-3 max-w-sm mx-auto">
+            Create an account to start sharing notes and resources with your
+            campus.
           </p>
         </div>
 
@@ -56,14 +61,14 @@ const Register = () => {
             </label>
             <div className="relative group">
               <Mail
-                className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-emerald-500 transition-colors"
+                className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-blue-500 transition-colors"
                 size={18}
               />
               <input
                 type="email"
                 required
-                className="w-full bg-[#09090b] text-zinc-100 pl-10 pr-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-zinc-700"
-                placeholder="yourname@college.edu"
+                className="w-full bg-[#09090b] text-zinc-100 pl-10 pr-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-zinc-700"
+                placeholder="yourname@mithibai.ac.in"
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
@@ -73,17 +78,17 @@ const Register = () => {
 
           <div>
             <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 ml-1">
-              Choose Password
+              Password
             </label>
             <div className="relative group">
               <Lock
-                className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-emerald-500 transition-colors"
+                className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-blue-500 transition-colors"
                 size={18}
               />
               <input
                 type="password"
                 required
-                className="w-full bg-[#09090b] text-zinc-100 pl-10 pr-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-zinc-700"
+                className="w-full bg-[#09090b] text-zinc-100 pl-10 pr-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-zinc-700"
                 placeholder="••••••••"
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
@@ -106,15 +111,17 @@ const Register = () => {
           </button>
         </form>
 
-        <p className="text-center mt-8 text-zinc-500 text-sm">
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            className="text-emerald-400 font-semibold hover:text-emerald-300 hover:underline transition-colors"
-          >
-            Login here
-          </Link>
-        </p>
+        <div className="mt-10 text-center border-t border-zinc-800/50 pt-6">
+          <p className="text-zinc-500 text-sm">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="text-blue-400 font-semibold hover:text-blue-300 hover:underline transition-colors"
+            >
+              Login here
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
