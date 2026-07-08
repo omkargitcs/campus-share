@@ -10,7 +10,7 @@ const ResourceCard = ({ resource }) => {
     try {
       // 1. Update the stats in the Database
       // Replace with your actual API base URL if needed
-      await API.patch(`/resources/stats/${resource.id}`, { type });
+      await API.patch(`/resources/stats/${resource.id}`, { type: "views" });
 
       // 2. Handle the File Opening Logic
       const isOfficeDoc = url.match(/\.(ppt|pptx|doc|docx)$/i);
