@@ -81,6 +81,7 @@ const Dashboard = () => {
 
   const handleDownload = async (id, fileUrl) => {
     try {
+      // Make sure it uses your configured API instance and hits the stats path:
       await API.patch(`/resources/stats/${id}`, { type: "download" });
       fetchResources();
       toast.info("Opening resource...");
