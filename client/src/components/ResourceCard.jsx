@@ -1,5 +1,6 @@
 import { Download, Eye, User, FileText } from "lucide-react";
 import axios from "axios";
+import API from "../../api";
 
 const ResourceCard = ({ resource }) => {
   const handleAction = async (type) => {
@@ -9,7 +10,7 @@ const ResourceCard = ({ resource }) => {
     try {
       // 1. Update the stats in the Database
       // Replace with your actual API base URL if needed
-      await axios.patch(`/api/resources/stats/${resource.id}`, { type });
+      await API.patch(`/resources/stats/${resource.id}`, { type });
 
       // 2. Handle the File Opening Logic
       const isOfficeDoc = url.match(/\.(ppt|pptx|doc|docx)$/i);
