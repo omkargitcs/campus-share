@@ -81,7 +81,7 @@ const Dashboard = () => {
 
   const handleDownload = async (id, fileUrl) => {
     try {
-      await API.patch(`/resources/${id}/download`);
+      await API.patch(`/resources/stats/${id}`, { type: "download" });
       fetchResources();
       toast.info("Opening resource...");
       window.open(fileUrl, "_blank");
