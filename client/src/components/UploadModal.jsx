@@ -34,17 +34,15 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
       // Extracting token from localStorage for your IAM system
       const token = localStorage.getItem("token");
 
-      const response = await fetch(
-        "http://localhost:5000/api/resources/upload",
-        {
-          method: "POST",
-          headers: {
-            // IMPORTANT: Do NOT set Content-Type; the browser sets it for FormData
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
+      const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+      const response = await fetch(`${baseUrl}/api/resources/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: formData,
+      });
 
       if (response.status === 401) {
         throw new Error("Session expired. Please log in again.");
