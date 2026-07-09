@@ -6,14 +6,14 @@ const API = axios.create({
     : "http://localhost:5000/api",
 });
 
-// ➔ Bulletproof Request Interceptor
 API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
-      // ✅ Modern and secure way to set request headers in Axios
       config.headers = config.headers || {};
+      // Set both casings so the backend auth middleware reads it perfectly either way
       config.headers["Authorization"] = `Bearer ${token}`;
+      config.headers["authorization"] = `Bearer ${token}`;
     }
     return config;
   },
