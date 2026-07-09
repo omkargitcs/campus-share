@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 exports.uploadResource = async (req, res) => {
@@ -6,11 +6,18 @@ exports.uploadResource = async (req, res) => {
     const { title, description, category, price, fileUrl } = req.body;
 
     if (!title || !category) {
-      return res.status(400).json({ message: "Title and Category are required" });
+      return res
+        .status(400)
+        .json({ message: "Title and Category are required" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Please upload a PDF file" });
     }
 
     // NOTE: Ensure your Frontend upload call to Cloudinary uses { resource_type: "auto" }
     // This prevents the "Failed to load PDF" error you see in your screenshots.
+    const savedFilePath = req.file.path;
 
     const newResource = await prisma.resource.create({
       data: {
@@ -18,18 +25,23 @@ exports.uploadResource = async (req, res) => {
         description,
         category,
         price: parseFloat(price) || 0,
-        fileUrl: fileUrl || "", 
-        ownerId: req.user.id, 
+        fileUrl: fileUrl || "",
+        ownerId: req.user.id,
       },
     });
 
     res.status(201).json({
       message: "Resource uploaded successfully!",
-      resource: newResource
+      resource: newResource,
     });
   } catch (error) {
     console.error("PRISMA_CREATE_ERROR:", error);
-    res.status(500).json({ message: "Internal server error during upload", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Internal server error during upload",
+        error: error.message,
+      });
   }
 };
 
@@ -37,16 +49,16 @@ exports.getAllResources = async (req, res) => {
   try {
     const resources = await prisma.resource.findMany({
       include: {
-        owner: { select: { email: true } }
+        owner: { select: { email: true } },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
     res.json(resources);
   } catch (error) {
     console.error("FETCH_RESOURCES_ERROR:", error);
     res.status(500).json({ message: "Could not fetch resources" });
   }
-}; 
+};
 
 // Consolidated Stats Function
 exports.incrementStats = async (req, res) => {
@@ -55,13 +67,13 @@ exports.incrementStats = async (req, res) => {
     const { type } = req.body; // 'views' or 'downloads'
 
     // Validation to prevent crashing if wrong type is sent
-    if (type !== 'views' && type !== 'downloads') {
+    if (type !== "views" && type !== "downloads") {
       return res.status(400).json({ message: "Invalid stat type" });
     }
 
     await prisma.resource.update({
       where: { id },
-      data: { [type]: { increment: 1 } }
+      data: { [type]: { increment: 1 } },
     });
 
     res.status(200).json({ message: `${type} updated` });
