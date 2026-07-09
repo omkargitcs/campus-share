@@ -32,9 +32,12 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
     formData.append("category", category);
 
     try {
+      const token = localStorage.getItem("token");
+
       const response = await API.post("/resources/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       });
 
