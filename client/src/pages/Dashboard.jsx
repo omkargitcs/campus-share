@@ -85,6 +85,13 @@ const Dashboard = () => {
       await API.patch(`/resources/stats/${id}`, { type: "downloads" });
       fetchResources();
       toast.info("Opening resource...");
+      const backendUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+      const fullFileUrl = fileUrl.startsWith("http")
+        ? fileUrl
+        : `${backendUrl}/${fileUrl}`;
+
       window.open(fileUrl, "_blank");
     } catch (err) {
       toast.error("Could not track download");

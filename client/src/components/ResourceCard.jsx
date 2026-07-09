@@ -1,27 +1,28 @@
 import { Download, Eye, User, FileText } from "lucide-react";
-import axios from "axios";
 import API from "../../api";
 
 const ResourceCard = ({ resource }) => {
   const handleAction = async (type) => {
-    const url = resource.fileUrl;
+    let url = resource.fileUrl;
     if (!url) return alert("No file attached to this resource.");
 
     try {
-      // 1. Update the stats in the Database
-      // Replace with your actual API base URL if needed
-      await API.patch(`/resources/stats/${resource.id}`, { type: "views" });
+      // ➔ Fix 1: Pass the dynamic 'type' parameter ('views' or 'downloads') instead of a hardcoded string
+      await API.patch(`/resources/stats/${resource.id}`, { type });
 
-      // 2. Handle the File Opening Logic
-      const isOfficeDoc = url.match(/\.(ppt|pptx|doc|docx)$/i);
+      // ➔ Fix 2: Construct the absolute path if your DB saves it relatively
+      const backendUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const fullFileUrl = url.startsWith("http") ? url : `${backendUrl}/${url}`;
+
+      // 2. Handle the File Opening Logic using the absolute URL path
+      const isOfficeDoc = fullFileUrl.match(/\.(ppt|pptx|doc|docx)$/i);
 
       if (isOfficeDoc) {
-        // Use Google Docs Viewer for Office files to prevent black screens
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fullFileUrl)}&embedded=true`;
         window.open(viewerUrl, "_blank", "noopener,noreferrer");
       } else {
-        // PDFs and Images open normally in a new tab
-        window.open(url, "_blank", "noopener,noreferrer");
+        window.open(fullFileUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err) {
       console.error("Failed to update stats or open file:", err);
