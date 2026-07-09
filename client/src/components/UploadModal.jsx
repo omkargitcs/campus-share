@@ -21,6 +21,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) return setError("Please select a file first.");
+    if (!title) return setError("PLEASE ENTER A TITLE.");
 
     setIsUploading(true);
     setError("");
@@ -31,30 +32,28 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
     formData.append("category", category);
 
     try {
-      // Extracting token from localStorage for your IAM system
-      const token = localStorage.getItem("token");
-
-      const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-
-      const response = await fetch(`${baseUrl}/api/resources/upload`, {
-        method: "POST",
+      const response = await API.post("/resources/upload", formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
-        body: formData,
       });
 
-      if (response.status === 401) {
-        throw new Error("Session expired. Please log in again.");
-      }
+      // ➔ Axios response data is directly accessible here:
+      onUploadSuccess(response.data);
 
-      if (!response.ok) throw new Error("Upload failed. Please try again.");
-
-      const result = await response.json();
-      onUploadSuccess(result);
+      // Reset form on successful upload
+      setFile(null);
+      setTitle("");
       onClose();
     } catch (err) {
-      setError(err.message);
+      // ➔ Axios errors are caught here instantly (e.g. 401, 400, 500)
+      if (err.response?.status === 401) {
+        setError("Session expired. Please log in again.");
+      } else {
+        setError(
+          err.response?.data?.message || "Upload failed. Please try again.",
+        );
+      }
     } finally {
       setIsUploading(false);
     }
