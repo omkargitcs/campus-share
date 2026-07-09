@@ -25,7 +25,7 @@ exports.uploadResource = async (req, res) => {
         description,
         category,
         price: parseFloat(price) || 0,
-        fileUrl: fileUrl || "",
+        fileUrl: savedFilePath,
         ownerId: req.user.id,
       },
     });
@@ -36,12 +36,10 @@ exports.uploadResource = async (req, res) => {
     });
   } catch (error) {
     console.error("PRISMA_CREATE_ERROR:", error);
-    res
-      .status(500)
-      .json({
-        message: "Internal server error during upload",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Internal server error during upload",
+      error: error.message,
+    });
   }
 };
 
