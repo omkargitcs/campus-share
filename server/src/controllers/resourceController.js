@@ -32,7 +32,7 @@ exports.uploadResource = async (req, res) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "campus_share_resources",
-            resource_type: "auto", // ➔ Change back to auto
+            resource_type: "auto",
             flags: "attachment", // ➔ Forces the browser to download it instead of trying to render it as an image
             public_id: req.file.originalname.split(".")[0], // ➔ Keeps the original filename! // 👈 "raw" forces Cloudinary to treat PDFs cleanly without treating them as images!
           },
