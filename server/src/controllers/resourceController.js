@@ -99,15 +99,36 @@ exports.deleteResource = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Optional: Add a check here to ensure req.user.id === resource.ownerId
+    // 1. Double check if this card exists before deleting
+    const resource = await prisma.resource.findUnique({
+      where: { id: id.toString() },
+    });
+
+    if (!resource) {
+      return res.status(404).json({ message: "Resource not found" });
+    }
+
+    // 2. Clear out the resource record directly
     await prisma.resource.delete({
-      where: { id: parseInt(id) || id }, // adjusts if your ID is an integer or string UUID
+      where: { id: id.toString() },
     });
 
     res.status(200).json({ message: "Resource deleted successfully" });
   } catch (error) {
     console.error("DELETE_RESOURCE_ERROR:", error);
-    res.status(500).json({ message: "Failed to delete resource" });
+
+    // Check if it's a Prisma relational dependency restriction error (P2003)
+    if (error.code === "P2003") {
+      return res.status(400).json({
+        message:
+          "Cannot delete this resource because other tracking stats or tables depend on it.",
+      });
+    }
+
+    res.status(500).json({
+      message: "Failed to delete resource",
+      error: error.message,
+    });
   }
 };
 
