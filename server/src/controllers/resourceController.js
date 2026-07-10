@@ -79,3 +79,51 @@ exports.uploadResource = async (req, res) => {
     });
   }
 };
+
+exports.getAllResources = async (req, res) => {
+  try {
+    const resources = await prisma.resource.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json(resources);
+  } catch (error) {
+    console.error("GET_ALL_RESOURCES_ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch resources" });
+  }
+};
+
+exports.deleteResource = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Optional: Add a check here to ensure req.user.id === resource.ownerId
+    await prisma.resource.delete({
+      where: { id: parseInt(id) || id }, // adjusts if your ID is an integer or string UUID
+    });
+
+    res.status(200).json({ message: "Resource deleted successfully" });
+  } catch (error) {
+    console.error("DELETE_RESOURCE_ERROR:", error);
+    res.status(500).json({ message: "Failed to delete resource" });
+  }
+};
+
+// 3. Increment download/view stats
+exports.incrementStats = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updatedResource = await prisma.resource.update({
+      where: { id: parseInt(id) || id },
+      data: {
+        // Assumes your schema has a views or downloads count field, adjust field name if needed
+        views: { increment: 1 },
+      },
+    });
+
+    res.status(200).json(updatedResource);
+  } catch (error) {
+    console.error("INCREMENT_STATS_ERROR:", error);
+    res.status(500).json({ message: "Failed to update statistics" });
+  }
+};
