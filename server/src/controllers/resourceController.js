@@ -1,9 +1,17 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const cloudinary = require("cloudinary").v2;
+
+// Configure Cloudinary explicitly with your environment strings
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 exports.uploadResource = async (req, res) => {
   try {
-    const { title, description, category, price, fileUrl } = req.body;
+    const { title, description, category, price } = req.body;
 
     if (!title || !category) {
       return res
@@ -12,12 +20,35 @@ exports.uploadResource = async (req, res) => {
     }
 
     if (!req.file) {
-      return res.status(400).json({ message: "Please upload a PDF file" });
+      return res.status(400).json({ message: "Please upload a file" });
     }
 
-    // NOTE: Ensure your Frontend upload call to Cloudinary uses { resource_type: "auto" }
-    // This prevents the "Failed to load PDF" error you see in your screenshots.
-    const savedFilePath = req.file.secure_url || req.file.path || req.file.url;
+    // Upload the memory buffer stream directly to Cloudinary with strict error logging
+    const uploadFromBuffer = (fileBuffer) => {
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "campus_share_resources",
+            resource_type: "auto",
+          },
+          (error, result) => {
+            if (error) {
+              // ➔ This will print the exact reason Cloudinary rejected it to your server logs!
+              console.error("DETAILED_CLOUDINARY_STREAM_ERROR:", error);
+              return reject(error);
+            }
+            resolve(result);
+          },
+        );
+
+        uploadStream.end(fileBuffer);
+      });
+    };
+
+    const cloudinaryResult = await uploadFromBuffer(req.file.buffer);
+
+    // Fallback extraction matching secure url properties securely
+    const savedFilePath = cloudinaryResult?.secure_url || cloudinaryResult?.url;
 
     if (!savedFilePath) {
       return res.status(400).json({
@@ -41,59 +72,10 @@ exports.uploadResource = async (req, res) => {
       resource: newResource,
     });
   } catch (error) {
-    console.error("PRISMA_CREATE_ERROR:", error);
+    console.error("CLOUDINARY_PRISMA_UPLOAD_ERROR:", error);
     res.status(500).json({
       message: "Internal server error during upload",
       error: error.message,
     });
-  }
-};
-
-exports.getAllResources = async (req, res) => {
-  try {
-    const resources = await prisma.resource.findMany({
-      include: {
-        owner: { select: { email: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(resources);
-  } catch (error) {
-    console.error("FETCH_RESOURCES_ERROR:", error);
-    res.status(500).json({ message: "Could not fetch resources" });
-  }
-};
-
-// Consolidated Stats Function
-exports.incrementStats = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { type } = req.body; // 'views' or 'downloads'
-
-    // Validation to prevent crashing if wrong type is sent
-    if (type !== "views" && type !== "downloads") {
-      return res.status(400).json({ message: "Invalid stat type" });
-    }
-
-    await prisma.resource.update({
-      where: { id },
-      data: { [type]: { increment: 1 } },
-    });
-
-    res.status(200).json({ message: `${type} updated` });
-  } catch (error) {
-    console.error("STATS_ERROR:", error);
-    res.status(500).json({ message: "Failed to update stats" });
-  }
-};
-
-exports.deleteResource = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await prisma.resource.delete({ where: { id } });
-    res.json({ message: "Deleted successfully" });
-  } catch (error) {
-    console.error("DELETE_ERROR:", error);
-    res.status(500).json({ message: "Delete failed" });
   }
 };
