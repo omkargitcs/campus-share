@@ -46,9 +46,8 @@ const Dashboard = () => {
     }
   };
 
-  // ➔ Callback passed to UploadModal to seamlessly sync newly created files
+  // ➔ 1. Safe State Synchronizer for fresh uploads matching Prisma JSON payloads
   const handleUploadSuccess = (newUploadedData) => {
-    // Safely extract the inner resource object if the backend wrapped it
     const cleanResource = newUploadedData.resource
       ? newUploadedData.resource
       : newUploadedData;
@@ -57,7 +56,7 @@ const Dashboard = () => {
       setResources((prev) => [cleanResource, ...prev]);
       toast.success("Resource uploaded successfully!");
     } else {
-      fetchResources(); // Fallback if data shape is completely unexpected
+      fetchResources();
     }
   };
 
@@ -95,6 +94,7 @@ const Dashboard = () => {
     });
   }, [resources, searchQuery, selectedCategory, viewMode, currentUserId]);
 
+  // ➔ 2. Bulletproof Downloader targeting POST endpoints with parameter guards
   const handleDownload = async (id, fileUrl) => {
     if (!id || !fileUrl) {
       toast.error("Resource link corrupted or missing.");
@@ -104,17 +104,22 @@ const Dashboard = () => {
     try {
       toast.info("Opening resource...");
 
-      // ➔ Fixed: Swapped .patch to .post to match your backend stats controller method!
+      // Hit stat tracking endpoint safely
       await API.post(`/resources/stats/${id}`, { type: "downloads" });
 
-      // Silent incremental count refresh
-      const { data } = await API.get("/resources");
-      setResources(data);
+      // Update download count visually instantly
+      setResources((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, downloads: (item.downloads || 0) + 1 }
+            : item,
+        ),
+      );
 
       window.open(fileUrl, "_blank");
     } catch (err) {
-      console.error("Tracking failed:", err);
-      // Fallback: Still let the student access their file even if analytics logging drops
+      console.error("Tracking error tracking logs:", err);
+      // Fallback: If tracking endpoint gets congested, always give the student their file
       window.open(fileUrl, "_blank");
     }
   };
@@ -138,7 +143,6 @@ const Dashboard = () => {
 
   const getThumbnail = (url) => {
     if (!url) return "";
-    // Handshake layout rules for converting Cloudinary PDFs to dynamic image tags
     return url
       .replace(/\.[^/.]+$/, ".jpg")
       .replace("/upload/", "/upload/w_400,h_300,c_fill,g_north,pg_1/");
@@ -146,17 +150,15 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#09090b] text-white font-sans">
-      {/* 1. Updated Navbar to handle Profile click */}
       <Navbar
         onLogout={() => {
           localStorage.removeItem("token");
           window.location.href = "/login";
         }}
         onUploadClick={() => setIsModalOpen(true)}
-        onProfileClick={() => setSidebarOpen(true)} // Ensure your Navbar has this prop
+        onProfileClick={() => setSidebarOpen(true)}
       />
 
-      {/* 2. Added the ProfileSidebar component */}
       <ProfileSidebar
         isOpen={isSidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -334,10 +336,11 @@ const Dashboard = () => {
         </div>
       </main>
 
+      {/* ➔ 3. Fixed: Bound our custom upload handler to update state arrays flawlessly */}
       <UploadModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onUploadSuccess={fetchResources}
+        onUploadSuccess={handleUploadSuccess}
       />
     </div>
   );
