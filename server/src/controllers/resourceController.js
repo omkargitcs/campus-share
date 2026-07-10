@@ -17,7 +17,13 @@ exports.uploadResource = async (req, res) => {
 
     // NOTE: Ensure your Frontend upload call to Cloudinary uses { resource_type: "auto" }
     // This prevents the "Failed to load PDF" error you see in your screenshots.
-    const savedFilePath = req.file.path;
+    const savedFilePath = req.file.secure_url || req.file.path || req.file.url;
+
+    if (!savedFilePath) {
+      return res.status(400).json({
+        message: "File uploaded but cloud storage path could not be parsed.",
+      });
+    }
 
     const newResource = await prisma.resource.create({
       data: {
