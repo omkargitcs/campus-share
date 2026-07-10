@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { X, Upload, FileText, CheckCircle2, Loader2 } from "lucide-react";
+import API from "../api";
 
 const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
   const [file, setFile] = useState(null);
