@@ -1,21 +1,32 @@
+import { useEffect } from "react"; // 👈 Import useEffect
 import { Download, Eye, User, FileText } from "lucide-react";
 import API from "../../api";
 
 const ResourceCard = ({ resource }) => {
+  // ➔ Automatically trigger a views increment when the card component mounts on screen
+  useEffect(() => {
+    const incrementView = async () => {
+      try {
+        await API.patch(`/resources/stats/${resource.id}`, { type: "views" });
+      } catch (err) {
+        console.error("Failed to update view stats:", err);
+      }
+    };
+    if (resource?.id) incrementView();
+  }, [resource.id]);
+
   const handleAction = async (type) => {
     let url = resource.fileUrl;
     if (!url) return alert("No file attached to this resource.");
 
     try {
-      // ➔ Fix 1: Pass the dynamic 'type' parameter ('views' or 'downloads') instead of a hardcoded string
+      // ➔ Increments download/open counter on click
       await API.patch(`/resources/stats/${resource.id}`, { type });
 
-      // ➔ Fix 2: Construct the absolute path if your DB saves it relatively
       const backendUrl =
         import.meta.env.VITE_API_URL || "http://localhost:5000";
       const fullFileUrl = url.startsWith("http") ? url : `${backendUrl}/${url}`;
 
-      // 2. Handle the File Opening Logic using the absolute URL path
       const isOfficeDoc = fullFileUrl.match(/\.(ppt|pptx|doc|docx)$/i);
 
       if (isOfficeDoc) {
@@ -47,7 +58,7 @@ const ResourceCard = ({ resource }) => {
         {resource.description || "No description provided."}
       </p>
 
-      {/* Stats Section: Views and Downloads */}
+      {/* Stats Section */}
       <div className="flex gap-4 mb-4 text-[11px] font-medium text-zinc-500">
         <div className="flex items-center gap-1">
           <Eye size={12} className="text-zinc-600" />
@@ -65,11 +76,12 @@ const ResourceCard = ({ resource }) => {
             <User size={14} className="text-zinc-300" />
           </div>
           <span className="truncate max-w-[80px]">
-            {resource.owner?.email.split("@")[0]}
+            {resource.owner?.email
+              ? resource.owner.email.split("@")[0]
+              : "User"}
           </span>
         </div>
 
-        {/* Action Button: Triggers the handleAction function */}
         <button
           onClick={() => handleAction("downloads")}
           className="flex items-center gap-2 bg-zinc-100 text-zinc-900 px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-white active:scale-95 transition shadow-sm"

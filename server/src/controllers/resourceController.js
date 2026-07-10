@@ -114,12 +114,15 @@ exports.deleteResource = async (req, res) => {
 exports.incrementStats = async (req, res) => {
   try {
     const { id } = req.params;
+    const { type } = req.body; // 👈 Captures "views" or "downloads" from frontend request body
+
+    // Fallback protection: ensure we only alter allowed stats columns
+    const fieldToIncrement = type === "downloads" ? "downloads" : "views";
 
     const updatedResource = await prisma.resource.update({
       where: { id: parseInt(id) || id },
       data: {
-        // Assumes your schema has a views or downloads count field, adjust field name if needed
-        views: { increment: 1 },
+        [fieldToIncrement]: { increment: 1 }, // 👈 Dynamically increments either column!
       },
     });
 
