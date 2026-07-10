@@ -32,21 +32,25 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
     formData.append("category", category);
 
     try {
-      const response = await API.post("/resources/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      onUploadSuccess(response.data);
+      // Let Axios automatically manage the multipart boundaries,
+      // and let your api.js interceptor attach the Authorization token!
+      const response = await API.post("/resources/upload", formData);
+
+      if (response.data) {
+        onUploadSuccess(response.data);
+      }
 
       // Reset form on successful upload
       setFile(null);
       setTitle("");
       onClose();
     } catch (err) {
-      // ➔ Axios errors are caught here instantly (e.g. 401, 400, 500)
+      console.error("Upload Error Context:", err.response?.data || err.message);
+
       if (err.response?.status === 401) {
-        setError("Session expired. Please log in again.");
+        setError(
+          "Session expired or unauthorized. Please log out and log back in.",
+        );
       } else {
         setError(
           err.response?.data?.message || "Upload failed. Please try again.",

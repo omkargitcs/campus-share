@@ -21,7 +21,7 @@ model Resource {
   id          String   @id @default(uuid())
   title       String
   description String?
-  category    String   
+  category    String?   
   fileUrl     String?  
   price       Float    @default(0)
   views       Int      @default(0)    
