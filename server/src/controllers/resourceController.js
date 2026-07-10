@@ -23,18 +23,17 @@ exports.uploadResource = async (req, res) => {
       return res.status(400).json({ message: "Please upload a file" });
     }
 
-    // Upload the memory buffer stream directly to Cloudinary with strict error logging
     const uploadFromBuffer = (fileBuffer) => {
       return new Promise((resolve, reject) => {
-        // ➔ Dynamically tell Cloudinary if it's an image or a raw document (like a PDF)
-        const isPdf = req.file.mimetype === "application/pdf";
+        // Detect if it's a PDF so we route it cleanly
+        const isPdf =
+          req.file.mimetype === "application/pdf" ||
+          req.file.originalname.endsWith(".pdf");
 
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "campus_share_resources",
-            resource_type: "auto",
-            flags: "attachment", // ➔ Forces the browser to download it instead of trying to render it as an image
-            public_id: req.file.originalname.split(".")[0], // ➔ Keeps the original filename! // 👈 "raw" forces Cloudinary to treat PDFs cleanly without treating them as images!
+            resource_type: isPdf ? "raw" : "auto",
           },
           (error, result) => {
             if (error) {
@@ -51,8 +50,8 @@ exports.uploadResource = async (req, res) => {
 
     const cloudinaryResult = await uploadFromBuffer(req.file.buffer);
 
-    // Fallback extraction matching secure url properties securely
-    const savedFilePath = cloudinaryResult?.secure_url || cloudinaryResult?.url;
+    // CRITICAL: Trust Cloudinary's secure_url directly—it automatically swaps /image/ to /raw/ for us!
+    const savedFilePath = cloudinaryResult?.secure_url;
 
     if (!savedFilePath) {
       return res.status(400).json({
@@ -66,7 +65,7 @@ exports.uploadResource = async (req, res) => {
         description,
         category,
         price: parseFloat(price) || 0,
-        fileUrl: savedFilePath,
+        fileUrl: savedFilePath, // This will now perfectly store the accurate link format
         ownerId: req.user.id,
       },
     });
