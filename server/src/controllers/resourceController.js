@@ -26,14 +26,16 @@ exports.uploadResource = async (req, res) => {
     // Upload the memory buffer stream directly to Cloudinary with strict error logging
     const uploadFromBuffer = (fileBuffer) => {
       return new Promise((resolve, reject) => {
+        // ➔ Dynamically tell Cloudinary if it's an image or a raw document (like a PDF)
+        const isPdf = req.file.mimetype === "application/pdf";
+
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "campus_share_resources",
-            resource_type: "auto",
+            resource_type: isPdf ? "raw" : "auto", // 👈 "raw" forces Cloudinary to treat PDFs cleanly without treating them as images!
           },
           (error, result) => {
             if (error) {
-              // ➔ This will print the exact reason Cloudinary rejected it to your server logs!
               console.error("DETAILED_CLOUDINARY_STREAM_ERROR:", error);
               return reject(error);
             }
