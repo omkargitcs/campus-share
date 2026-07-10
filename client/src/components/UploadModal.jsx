@@ -37,10 +37,10 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
       // and let your api.js interceptor attach the Authorization token!
       const response = await API.post("/resources/upload", formData);
 
-      if (response.data) {
-        onUploadSuccess(response.data);
+      if (response.data && response.data.resource) {
+        // ➔ Send ONLY the resource object, matching your existing dashboard entries!
+        onUploadSuccess(response.data.resource);
       }
-
       // Reset form on successful upload
       setFile(null);
       setTitle("");

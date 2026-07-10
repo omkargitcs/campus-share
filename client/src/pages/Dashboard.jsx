@@ -10,13 +10,13 @@ import {
 import API from "../api";
 import UploadModal from "../components/UploadModal";
 import Navbar from "../components/Navbar";
-import ProfileSidebar from "../components/ProfileSidebar"; // Already imported
+import ProfileSidebar from "../components/ProfileSidebar";
 import { toast } from "sonner";
 import SkeletonCard from "../components/SkeletonCard";
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSidebarOpen, setSidebarOpen] = useState(false); // State to control sidebar
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [resources, setResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -46,12 +46,27 @@ const Dashboard = () => {
     }
   };
 
+  // ➔ Callback passed to UploadModal to seamlessly sync newly created files
+  const handleUploadSuccess = (newUploadedData) => {
+    // Safely extract the inner resource object if the backend wrapped it
+    const cleanResource = newUploadedData.resource
+      ? newUploadedData.resource
+      : newUploadedData;
+
+    if (cleanResource && cleanResource.id) {
+      setResources((prev) => [cleanResource, ...prev]);
+      toast.success("Resource uploaded successfully!");
+    } else {
+      fetchResources(); // Fallback if data shape is completely unexpected
+    }
+  };
+
   const userStats = useMemo(() => {
     const myResources = resources.filter(
-      (res) => res.ownerId === currentUserId,
+      (res) => res?.ownerId === currentUserId,
     );
     const totalDownloads = myResources.reduce(
-      (acc, curr) => acc + (curr.downloads || 0),
+      (acc, curr) => acc + (curr?.downloads || 0),
       0,
     );
     const impact =
@@ -68,6 +83,7 @@ const Dashboard = () => {
 
   const filteredResources = useMemo(() => {
     return resources.filter((res) => {
+      if (!res) return false;
       const matchesSearch =
         res.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         res.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -80,30 +96,35 @@ const Dashboard = () => {
   }, [resources, searchQuery, selectedCategory, viewMode, currentUserId]);
 
   const handleDownload = async (id, fileUrl) => {
-    try {
-      // Make sure it uses your configured API instance and hits the stats path:
-      await API.patch(`/resources/stats/${id}`, { type: "downloads" });
-      fetchResources();
-      toast.info("Opening resource...");
-      const backendUrl =
-        import.meta.env.VITE_API_URL || "http://localhost:5000";
+    if (!id || !fileUrl) {
+      toast.error("Resource link corrupted or missing.");
+      return;
+    }
 
-      const fullFileUrl = fileUrl.startsWith("http")
-        ? fileUrl
-        : `${backendUrl}/${fileUrl}`;
+    try {
+      toast.info("Opening resource...");
+
+      // ➔ Fixed: Swapped .patch to .post to match your backend stats controller method!
+      await API.post(`/resources/stats/${id}`, { type: "downloads" });
+
+      // Silent incremental count refresh
+      const { data } = await API.get("/resources");
+      setResources(data);
 
       window.open(fileUrl, "_blank");
     } catch (err) {
-      toast.error("Could not track download");
+      console.error("Tracking failed:", err);
+      // Fallback: Still let the student access their file even if analytics logging drops
       window.open(fileUrl, "_blank");
     }
   };
 
   const handleDelete = async (id) => {
+    if (!id) return;
     if (window.confirm("Are you sure you want to delete this resource?")) {
       try {
         await API.delete(`/resources/${id}`);
-        fetchResources();
+        setResources((prev) => prev.filter((item) => item.id !== id));
         toast.success("Resource deleted successfully");
       } catch (err) {
         toast.error(err.response?.data?.message || "Delete failed");
@@ -117,6 +138,7 @@ const Dashboard = () => {
 
   const getThumbnail = (url) => {
     if (!url) return "";
+    // Handshake layout rules for converting Cloudinary PDFs to dynamic image tags
     return url
       .replace(/\.[^/.]+$/, ".jpg")
       .replace("/upload/", "/upload/w_400,h_300,c_fill,g_north,pg_1/");
