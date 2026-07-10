@@ -1,9 +1,9 @@
-import { useEffect } from "react"; // 👈 Import useEffect
+import { useEffect } from "react";
 import { Download, Eye, User, FileText } from "lucide-react";
 import API from "../../api";
 
 const ResourceCard = ({ resource }) => {
-  // ➔ Automatically trigger a views increment when the card component mounts on screen
+  // Automatically trigger a views increment when the card component mounts on screen
   useEffect(() => {
     const incrementView = async () => {
       try {
@@ -20,7 +20,7 @@ const ResourceCard = ({ resource }) => {
     if (!url) return alert("No file attached to this resource.");
 
     try {
-      // ➔ Increments download/open counter on click
+      // 1. Increments download/open counter on backend
       await API.patch(`/resources/stats/${resource.id}`, { type });
 
       const backendUrl =
@@ -33,10 +33,30 @@ const ResourceCard = ({ resource }) => {
         const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fullFileUrl)}&embedded=true`;
         window.open(viewerUrl, "_blank", "noopener,noreferrer");
       } else {
-        window.open(fullFileUrl, "_blank", "noopener,noreferrer");
+        // ➔ FIX: Fetch the binary data stream and name it beautifully using the resource title
+        const response = await fetch(fullFileUrl);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        // Create an invisible anchor tag to download the file cleanly
+        const link = document.createElement("a");
+        link.href = blobUrl;
+
+        // Clean spaces out of the resource title for a standard file name
+        const safeFileName = resource.title.replace(/\s+/g, "_") || "resource";
+        link.download = `${safeFileName}.pdf`;
+
+        document.body.appendChild(link);
+        link.click();
+
+        // Clean up from document tree and revoke object reference memory
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
       }
     } catch (err) {
       console.error("Failed to update stats or open file:", err);
+      // Fallback: If fetch is blocked by CORS configurations, open the link directly in a new tab
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   };
 
