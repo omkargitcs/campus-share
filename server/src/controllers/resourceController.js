@@ -23,39 +23,21 @@ exports.uploadResource = async (req, res) => {
       return res.status(400).json({ message: "Please upload a file" });
     }
 
-    // ➔ THE CRITICAL FIX: Generate a clean, URL-safe filename from the title
+    // 1. Create a safe URL-friendly filename from the resource title
     const safeTitle = title.replace(/[^a-zA-Z0-9]/g, "_");
 
-    const uploadFromBuffer = (fileBuffer) => {
-      return new Promise((resolve, reject) => {
-        // Detect if it's a PDF so we route it cleanly
-        const isPdf =
-          req.file.mimetype === "application/pdf" ||
-          req.file.originalname.endsWith(".pdf");
+    // 2. Convert the memory buffer into a clean Base64 Data URI string.
+    // This explicitly tells Cloudinary the exact file format (e.g., application/pdf)
+    const fileBase64 = req.file.buffer.toString("base64");
+    const dataURI = `data:${req.file.mimetype};base64,${fileBase64}`;
 
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: "campus_share_resources",
-            resource_type: isPdf ? "raw" : "auto",
-            // ➔ THE FIX: Force Cloudinary to permanently store the file with your title name
-            public_id: isPdf ? `${safeTitle}.pdf` : safeTitle,
-          },
-          (error, result) => {
-            if (error) {
-              console.error("DETAILED_CLOUDINARY_STREAM_ERROR:", error);
-              return reject(error);
-            }
-            resolve(result);
-          },
-        );
+    // 3. Upload directly using Cloudinary's string uploader instead of a broken stream
+    const cloudinaryResult = await cloudinary.uploader.upload(dataURI, {
+      folder: "campus_share_resources",
+      resource_type: "auto", // ➔ Crucial: "auto" works perfectly now because the Data URI supplies format context!
+      public_id: safeTitle, // ➔ Sets your clean title as the permanent filename
+    });
 
-        uploadStream.end(fileBuffer);
-      });
-    };
-
-    const cloudinaryResult = await uploadFromBuffer(req.file.buffer);
-
-    // CRITICAL: Trust Cloudinary's secure_url directly
     const savedFilePath = cloudinaryResult?.secure_url;
 
     if (!savedFilePath) {
@@ -70,7 +52,7 @@ exports.uploadResource = async (req, res) => {
         description,
         category,
         price: parseFloat(price) || 0,
-        fileUrl: savedFilePath,
+        fileUrl: savedFilePath, // Stores a clean link ending beautifully in your file name
         ownerId: req.user.id,
       },
     });
@@ -87,6 +69,8 @@ exports.uploadResource = async (req, res) => {
     });
   }
 };
+
+// ... keep your existing getAllResources, deleteResource, and incrementStats functions exactly the same!
 
 exports.getAllResources = async (req, res) => {
   try {
