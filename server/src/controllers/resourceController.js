@@ -23,22 +23,36 @@ exports.uploadResource = async (req, res) => {
       return res.status(400).json({ message: "Please upload a file" });
     }
 
-    // 1. Create a safe URL-friendly filename from the resource title
-    const safeTitle = title.replace(/[^a-zA-Z0-9]/g, "_");
+    // ➔ THE FIX: Clean the actual file name they uploaded (e.g., "React Notes.pdf" -> "React_Notes")
+    const originalNameWithoutExt = req.file.originalname
+      .split(".")
+      .slice(0, -1)
+      .join(".")
+      .replace(/[^a-zA-Z0-9]/g, "_");
 
-    // 2. Convert the memory buffer into a clean Base64 Data URI string.
-    // This explicitly tells Cloudinary the exact file format (e.g., application/pdf)
-    const fileBase64 = req.file.buffer.toString("base64");
-    const dataURI = `data:${req.file.mimetype};base64,${fileBase64}`;
+    const uploadFromBuffer = (fileBuffer) => {
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "campus_share_resources",
+            resource_type: "raw", // Keep it raw since your server expects it
+            // ➔ FORCES Cloudinary to use the real file name + extension in the URL path
+            public_id: `${originalNameWithoutExt}.pdf`,
+          },
+          (error, result) => {
+            if (error) {
+              console.error("DETAILED_CLOUDINARY_STREAM_ERROR:", error);
+              return reject(error);
+            }
+            resolve(result);
+          },
+        );
 
-    // 3. Upload directly using Cloudinary's string uploader instead of a broken stream
-    const cloudinaryResult = await cloudinary.uploader.upload(dataURI, {
-      folder: "campus_share_resources",
-      resource_type: "image", // ➔ Crucial: "auto" works perfectly now because the Data URI supplies format context!
-      format: "pdf",
-      public_id: safeTitle, // ➔ Sets your clean title as the permanent filename
-    });
+        uploadStream.end(fileBuffer);
+      });
+    };
 
+    const cloudinaryResult = await uploadFromBuffer(req.file.buffer);
     const savedFilePath = cloudinaryResult?.secure_url;
 
     if (!savedFilePath) {
@@ -53,7 +67,7 @@ exports.uploadResource = async (req, res) => {
         description,
         category,
         price: parseFloat(price) || 0,
-        fileUrl: savedFilePath, // Stores a clean link ending beautifully in your file name
+        fileUrl: savedFilePath,
         ownerId: req.user.id,
       },
     });
@@ -165,5 +179,36 @@ exports.redirectToResource = async (req, res) => {
     return res
       .status(500)
       .send("Internal server error handling document link.");
+  }
+};
+
+// controllers/resourceController.js
+exports.trackDownloadStat = async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.body; // "downloads"
+
+  try {
+    if (type !== "downloads") {
+      return res.status(400).json({ message: "Invalid stat type" });
+    }
+
+    // Increment the downloads column by 1 atomically
+    const updatedResource = await prisma.resource.update({
+      where: { id: id }, // Change to Number(id) if your IDs are integers
+      data: {
+        downloads: {
+          increment: 1,
+        },
+      },
+    });
+
+    return res
+      .status(200)
+      .json({ success: true, downloads: updatedResource.downloads });
+  } catch (error) {
+    console.error("Failed to update stat tracking:", error);
+    return res
+      .status(500)
+      .json({ message: "Internal server error tracking stats" });
   }
 };

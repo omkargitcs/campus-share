@@ -12,6 +12,10 @@ router.post(
   upload.single("file"), // 2. Parse file stream
   resourceController.uploadResource,
 );
+// routes/resource.js
+
+// Add this alongside your existing GET and POST routes
+router.post("/stats/:id", resourceController.trackDownloadStat);
 
 router.get("/", resourceController.getAllResources);
 router.delete("/:id", auth, resourceController.deleteResource);
