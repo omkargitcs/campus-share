@@ -20,12 +20,12 @@ const ResourceCard = ({ resource }) => {
     if (!url) return alert("No file attached to this resource.");
 
     try {
-      // 1. Increments download/open counter on backend
+      // 1. Increment download/open counter on backend
       await API.patch(`/resources/stats/${resource.id}`, { type });
 
       const backendUrl =
         import.meta.env.VITE_API_URL || "http://localhost:5000";
-      const fullFileUrl = url.startsWith("http") ? url : `${backendUrl}/${url}`;
+      let fullFileUrl = url.startsWith("http") ? url : `${backendUrl}/${url}`;
 
       const isOfficeDoc = fullFileUrl.match(/\.(ppt|pptx|doc|docx)$/i);
 
@@ -33,29 +33,29 @@ const ResourceCard = ({ resource }) => {
         const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fullFileUrl)}&embedded=true`;
         window.open(viewerUrl, "_blank", "noopener,noreferrer");
       } else {
-        // ➔ FIX: Fetch the binary data stream and name it beautifully using the resource title
-        const response = await fetch(fullFileUrl);
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
+        // ➔ THE FIX: Clean the title for a perfect filename
+        const cleanTitle = resource.title.replace(/\s+/g, "_") || "resource";
 
-        // Create an invisible anchor tag to download the file cleanly
-        const link = document.createElement("a");
-        link.href = blobUrl;
+        // ➔ THE TRICK: Inject Cloudinary's dynamic attachment flag into the URL.
+        // This tells Cloudinary to deliver the file with Content-Disposition: attachment; filename="Your_Title.pdf"
+        if (fullFileUrl.includes("/raw/upload/")) {
+          fullFileUrl = fullFileUrl.replace(
+            "/raw/upload/",
+            `/raw/upload/fl_attachment:${cleanTitle}/`,
+          );
+        } else if (fullFileUrl.includes("/upload/")) {
+          fullFileUrl = fullFileUrl.replace(
+            "/upload/",
+            `/upload/fl_attachment:${cleanTitle}/`,
+          );
+        }
 
-        // Clean spaces out of the resource title for a standard file name
-        const safeFileName = resource.title.replace(/\s+/g, "_") || "resource";
-        link.download = `${safeFileName}.pdf`;
-
-        document.body.appendChild(link);
-        link.click();
-
-        // Clean up from document tree and revoke object reference memory
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
+        // 2. Open the URL directly. The browser will download it with the clean title and extension!
+        window.open(fullFileUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err) {
       console.error("Failed to update stats or open file:", err);
-      // Fallback: If fetch is blocked by CORS configurations, open the link directly in a new tab
+      // Ultimate fallback back to the database URL if anything errors out
       window.open(url, "_blank", "noopener,noreferrer");
     }
   };
