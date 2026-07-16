@@ -34,7 +34,7 @@ exports.uploadResource = async (req, res) => {
     // 3. Upload directly using Cloudinary's string uploader instead of a broken stream
     const cloudinaryResult = await cloudinary.uploader.upload(dataURI, {
       folder: "campus_share_resources",
-      resource_type: "auto", // ➔ Crucial: "auto" works perfectly now because the Data URI supplies format context!
+      resource_type: "raw", // ➔ Crucial: "auto" works perfectly now because the Data URI supplies format context!
       public_id: safeTitle, // ➔ Sets your clean title as the permanent filename
     });
 
