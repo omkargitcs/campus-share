@@ -140,3 +140,29 @@ exports.incrementStats = async (req, res) => {
     res.status(500).json({ message: "Failed to update statistics" });
   }
 };
+
+exports.redirectToResource = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Increment the download stat inside the database directly
+    const updatedResource = await prisma.resource.update({
+      where: { id: id.toString() },
+      data: {
+        downloads: { increment: 1 },
+      },
+    });
+
+    if (!updatedResource || !updatedResource.fileUrl) {
+      return res.status(404).send("Resource file not found.");
+    }
+
+    // 2. Redirect the browser tab directly to the secure Cloudinary URL location
+    return res.redirect(updatedResource.fileUrl);
+  } catch (error) {
+    console.error("REDIRECT_RESOURCE_ERROR:", error);
+    return res
+      .status(500)
+      .send("Internal server error handling document link.");
+  }
+};

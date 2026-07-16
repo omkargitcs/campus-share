@@ -16,5 +16,6 @@ router.post(
 router.get("/", resourceController.getAllResources);
 router.delete("/:id", auth, resourceController.deleteResource);
 router.patch("/stats/:id", auth, resourceController.incrementStats);
+router.get("/download/:id", resourceController.redirectToResource);
 
 module.exports = router;

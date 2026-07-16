@@ -3,61 +3,30 @@ import { Download, Eye, User, FileText } from "lucide-react";
 import API from "../../api";
 
 const ResourceCard = ({ resource }) => {
-  // Automatically trigger a views increment when the card component mounts on screen
+  // Views tracking can still run quietly in the background when the card mounts
   useEffect(() => {
     const incrementView = async () => {
       try {
         await API.patch(`/resources/stats/${resource.id}`, { type: "views" });
       } catch (err) {
+        // If it throws a 401 here, it's safe to ignore, as views don't block the file opening
         console.error("Failed to update view stats:", err);
       }
     };
     if (resource?.id) incrementView();
   }, [resource.id]);
 
-  const handleAction = async (type) => {
-    let url = resource.fileUrl;
-    if (!url) return alert("No file attached to this resource.");
+  const handleDownloadRedirect = () => {
+    // Determine the base API link path directly from your setup environment
+    const backendBaseUrl =
+      import.meta.env.VITE_API_URL ||
+      "https://campus-share-6yaz.onrender.com/api";
 
-    try {
-      // 1. Increment download/open counter on backend
-      await API.patch(`/resources/stats/${resource.id}`, { type });
+    // Build the direct download access URL string
+    const targetUrl = `${backendBaseUrl}/resources/download/${resource.id}`;
 
-      const backendUrl =
-        import.meta.env.VITE_API_URL || "http://localhost:5000";
-      let fullFileUrl = url.startsWith("http") ? url : `${backendUrl}/${url}`;
-
-      const isOfficeDoc = fullFileUrl.match(/\.(ppt|pptx|doc|docx)$/i);
-
-      if (isOfficeDoc) {
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fullFileUrl)}&embedded=true`;
-        window.open(viewerUrl, "_blank", "noopener,noreferrer");
-      } else {
-        // ➔ THE FIX: Clean the title for a perfect filename
-        const cleanTitle = resource.title.replace(/\s+/g, "_") || "resource";
-
-        // ➔ THE TRICK: Inject Cloudinary's dynamic attachment flag into the URL.
-        // This tells Cloudinary to deliver the file with Content-Disposition: attachment; filename="Your_Title.pdf"
-        if (fullFileUrl.includes("/raw/upload/")) {
-          fullFileUrl = fullFileUrl.replace(
-            "/raw/upload/",
-            `/raw/upload/fl_attachment:${cleanTitle}/`,
-          );
-        } else if (fullFileUrl.includes("/upload/")) {
-          fullFileUrl = fullFileUrl.replace(
-            "/upload/",
-            `/upload/fl_attachment:${cleanTitle}/`,
-          );
-        }
-
-        // 2. Open the URL directly. The browser will download it with the clean title and extension!
-        window.open(fullFileUrl, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      console.error("Failed to update stats or open file:", err);
-      // Ultimate fallback back to the database URL if anything errors out
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
+    // Fire it open in a separate window tab—the backend will increment the stat and handle the path instantly
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -103,7 +72,7 @@ const ResourceCard = ({ resource }) => {
         </div>
 
         <button
-          onClick={() => handleAction("downloads")}
+          onClick={handleDownloadRedirect}
           className="flex items-center gap-2 bg-zinc-100 text-zinc-900 px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-white active:scale-95 transition shadow-sm"
         >
           <Download size={14} /> View
