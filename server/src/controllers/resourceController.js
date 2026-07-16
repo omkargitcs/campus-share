@@ -23,6 +23,9 @@ exports.uploadResource = async (req, res) => {
       return res.status(400).json({ message: "Please upload a file" });
     }
 
+    // ➔ THE CRITICAL FIX: Generate a clean, URL-safe filename from the title
+    const safeTitle = title.replace(/[^a-zA-Z0-9]/g, "_");
+
     const uploadFromBuffer = (fileBuffer) => {
       return new Promise((resolve, reject) => {
         // Detect if it's a PDF so we route it cleanly
@@ -34,6 +37,8 @@ exports.uploadResource = async (req, res) => {
           {
             folder: "campus_share_resources",
             resource_type: isPdf ? "raw" : "auto",
+            // ➔ THE FIX: Force Cloudinary to permanently store the file with your title name
+            public_id: isPdf ? `${safeTitle}.pdf` : safeTitle,
           },
           (error, result) => {
             if (error) {
@@ -50,7 +55,7 @@ exports.uploadResource = async (req, res) => {
 
     const cloudinaryResult = await uploadFromBuffer(req.file.buffer);
 
-    // CRITICAL: Trust Cloudinary's secure_url directly—it automatically swaps /image/ to /raw/ for us!
+    // CRITICAL: Trust Cloudinary's secure_url directly
     const savedFilePath = cloudinaryResult?.secure_url;
 
     if (!savedFilePath) {
@@ -65,7 +70,7 @@ exports.uploadResource = async (req, res) => {
         description,
         category,
         price: parseFloat(price) || 0,
-        fileUrl: savedFilePath, // This will now perfectly store the accurate link format
+        fileUrl: savedFilePath,
         ownerId: req.user.id,
       },
     });
@@ -117,7 +122,6 @@ exports.deleteResource = async (req, res) => {
   } catch (error) {
     console.error("DELETE_RESOURCE_ERROR:", error);
 
-    // Check if it's a Prisma relational dependency restriction error (P2003)
     if (error.code === "P2003") {
       return res.status(400).json({
         message:
@@ -132,19 +136,17 @@ exports.deleteResource = async (req, res) => {
   }
 };
 
-// 3. Increment download/view stats
 exports.incrementStats = async (req, res) => {
   try {
     const { id } = req.params;
-    const { type } = req.body; // 👈 Captures "views" or "downloads" from frontend request body
+    const { type } = req.body;
 
-    // Fallback protection: ensure we only alter allowed stats columns
     const fieldToIncrement = type === "downloads" ? "downloads" : "views";
 
     const updatedResource = await prisma.resource.update({
       where: { id: parseInt(id) || id },
       data: {
-        [fieldToIncrement]: { increment: 1 }, // 👈 Dynamically increments either column!
+        [fieldToIncrement]: { increment: 1 },
       },
     });
 
