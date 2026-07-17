@@ -35,9 +35,9 @@ exports.uploadResource = async (req, res) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "campus_share_resources",
-            resource_type: "auto", // Let Cloudinary auto-detect it safely as a raw file
-            access_mode: "anonymous",
-            // Force it to use the clean name and append .pdf so it opens in the browser correctly
+            resource_type: "auto", // Let Cloudinary handle the raw document parsing
+            access_mode: "public", // FIX: Changed from "anonymous" to "public"
+            // Keeps the clean name and appends .pdf so it opens smoothly in browser tabs
             public_id: `${originalNameWithoutExt}.pdf`,
           },
           (error, result) => {
