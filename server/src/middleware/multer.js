@@ -1,11 +1,9 @@
+// Inside your routes file
 const multer = require("multer");
 
-// Configure clean memory storage allocation for the buffer stream
+// WRONG: const upload = multer({ dest: 'uploads/' }); // This doesn't create a buffer!
+// RIGHT: Use memory storage to handle buffers seamlessly
 const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB file limit
-});
-
-module.exports = upload;
+router.post("/upload", upload.single("file"), uploadResource);
