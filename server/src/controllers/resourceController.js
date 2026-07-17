@@ -35,11 +35,11 @@ exports.uploadResource = async (req, res) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "campus_share_resources",
-            resource_type: "raw",
-            format: "pdf", // Keep it raw since your server expects it
+            upload_preset: "campus_preset",
+            resource_type: "image", // Treats PDF as an image asset to bypass raw delivery blocks
+            format: "pdf",
             access_mode: "anonymous",
-            // ➔ FORCES Cloudinary to use the real file name + extension in the URL path
-            public_id: `${originalNameWithoutExt}.pdf`,
+            public_id: originalNameWithoutExt, // Cloudinary automatically turns this into name.pdf//
           },
           (error, result) => {
             if (error) {
