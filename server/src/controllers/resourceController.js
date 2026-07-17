@@ -35,10 +35,10 @@ exports.uploadResource = async (req, res) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "campus_share_resources",
-            resource_type: "image", // Treats PDF as an image asset to bypass raw delivery blocks
-            format: "pdf",
+            resource_type: "auto", // Let Cloudinary auto-detect it safely as a raw file
             access_mode: "anonymous",
-            public_id: originalNameWithoutExt,
+            // Force it to use the clean name and append .pdf so it opens in the browser correctly
+            public_id: `${originalNameWithoutExt}.pdf`,
           },
           (error, result) => {
             if (error) {
@@ -49,7 +49,6 @@ exports.uploadResource = async (req, res) => {
           },
         );
 
-        // FIX: Moved inside the Promise executor block but down here so it writes to the stream properly
         uploadStream.end(fileBuffer);
       });
     };
