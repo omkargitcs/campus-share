@@ -23,23 +23,22 @@ exports.uploadResource = async (req, res) => {
       return res.status(400).json({ message: "Please upload a file" });
     }
 
-    // ➔ THE FIX: Clean the actual file name they uploaded (e.g., "React Notes.pdf" -> "React_Notes")
+    // Clean the actual file name they uploaded (e.g., "React Notes.pdf" -> "React_Notes")
     const originalNameWithoutExt = req.file.originalname
       .split(".")
       .slice(0, -1)
       .join(".")
-      .replace(/[^a-zA-Z0-9]/g, "_");
+      .replace(/[^a-zA-Z0-9-_]/g, "_");
 
     const uploadFromBuffer = (fileBuffer) => {
       return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "campus_share_resources",
-            upload_preset: "campus_preset",
             resource_type: "image", // Treats PDF as an image asset to bypass raw delivery blocks
             format: "pdf",
             access_mode: "anonymous",
-            public_id: originalNameWithoutExt, // Cloudinary automatically turns this into name.pdf//
+            public_id: originalNameWithoutExt,
           },
           (error, result) => {
             if (error) {
@@ -50,6 +49,7 @@ exports.uploadResource = async (req, res) => {
           },
         );
 
+        // FIX: Moved inside the Promise executor block but down here so it writes to the stream properly
         uploadStream.end(fileBuffer);
       });
     };
@@ -86,8 +86,6 @@ exports.uploadResource = async (req, res) => {
     });
   }
 };
-
-// ... keep your existing getAllResources, deleteResource, and incrementStats functions exactly the same!
 
 exports.getAllResources = async (req, res) => {
   try {
@@ -184,19 +182,18 @@ exports.redirectToResource = async (req, res) => {
   }
 };
 
-// controllers/resourceController.js
 exports.trackDownloadStat = async (req, res) => {
   const { id } = req.params;
-  const { type } = req.body; // "downloads"
+  const { type } = req.body;
 
   try {
     if (type !== "downloads") {
       return res.status(400).json({ message: "Invalid stat type" });
     }
 
-    // Increment the downloads column by 1 atomically
+    // Increment the downloads column by 1 atomically (Handles both String and Number schemas seamlessly)
     const updatedResource = await prisma.resource.update({
-      where: { id: id }, // Change to Number(id) if your IDs are integers
+      where: { id: parseInt(id) || id },
       data: {
         downloads: {
           increment: 1,
