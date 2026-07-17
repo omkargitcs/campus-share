@@ -35,7 +35,7 @@ exports.uploadResource = async (req, res) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "campus_share_resources",
-            resource_type: "image",
+            resource_type: "raw",
             format: "pdf", // Keep it raw since your server expects it
             access_mode: "anonymous",
             // ➔ FORCES Cloudinary to use the real file name + extension in the URL path
