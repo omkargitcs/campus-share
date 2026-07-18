@@ -6,6 +6,9 @@ import {
   Search,
   Download,
   FolderOpen,
+  FileText,
+  BookOpen,
+  HelpCircle,
 } from "lucide-react";
 import API from "../api";
 import UploadModal from "../components/UploadModal";
@@ -13,6 +16,39 @@ import Navbar from "../components/Navbar";
 import ProfileSidebar from "../components/ProfileSidebar";
 import { toast } from "sonner";
 import SkeletonCard from "../components/SkeletonCard";
+
+// Dynamic cinematic placecard generator for text files/documents without images
+const CategoryPlaceholder = ({ category }) => {
+  const normalized = category?.toLowerCase();
+
+  let icon = <FileText size={40} className="text-blue-400/60" />;
+  let gradient = "from-blue-950/40 via-zinc-900 to-zinc-950";
+  let pattern =
+    "bg-[radial-gradient(#1e3a8a_1px,transparent_1px)] [background-size:16px_16px]";
+
+  if (normalized === "book") {
+    icon = <BookOpen size={40} className="text-emerald-400/60" />;
+    gradient = "from-emerald-950/40 via-zinc-900 to-zinc-950";
+    pattern =
+      "bg-[radial-gradient(#064e3b_1px,transparent_1px)] [background-size:16px_16px]";
+  } else if (normalized === "pyq") {
+    icon = <HelpCircle size={40} className="text-purple-400/60" />;
+    gradient = "from-purple-950/40 via-zinc-900 to-zinc-950";
+    pattern =
+      "bg-[radial-gradient(#581c87_1px,transparent_1px)] [background-size:16px_16px]";
+  }
+
+  return (
+    <div
+      className={`w-full h-full bg-gradient-to-b ${gradient} relative flex items-center justify-center overflow-hidden`}
+    >
+      <div className={`absolute inset-0 opacity-20 ${pattern}`} />
+      <div className="relative transform group-hover:scale-110 transition-transform duration-300">
+        {icon}
+      </div>
+    </div>
+  );
+};
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -46,7 +82,6 @@ const Dashboard = () => {
     }
   };
 
-  // ➔ 1. Safe State Synchronizer for fresh uploads matching Prisma JSON payloads
   const handleUploadSuccess = (newUploadedData) => {
     const cleanResource = newUploadedData.resource
       ? newUploadedData.resource
@@ -94,7 +129,6 @@ const Dashboard = () => {
     });
   }, [resources, searchQuery, selectedCategory, viewMode, currentUserId]);
 
-  // ➔ 2. Bulletproof Downloader targeting POST endpoints with parameter guards
   const handleDownload = async (id, fileUrl) => {
     if (!id || !fileUrl) {
       toast.error("Resource link corrupted or missing.");
@@ -103,11 +137,8 @@ const Dashboard = () => {
 
     try {
       toast.info("Opening resource...");
-
-      // Hit stat tracking endpoint safely
       await API.post(`/resources/stats/${id}`, { type: "downloads" });
 
-      // Update download count visually instantly
       setResources((prev) =>
         prev.map((item) =>
           item.id === id
@@ -119,7 +150,6 @@ const Dashboard = () => {
       window.open(fileUrl, "_blank");
     } catch (err) {
       console.error("Tracking error tracking logs:", err);
-      // Fallback: If tracking endpoint gets congested, always give the student their file
       window.open(fileUrl, "_blank");
     }
   };
@@ -148,9 +178,16 @@ const Dashboard = () => {
       .replace("/upload/", "/upload/w_400,h_300,c_fill,g_north,pg_1/");
   };
 
+  // Helper validation pattern to see if URL points cleanly to visual media files
+  const hasImageExtension = (url) => {
+    if (!url) return false;
+    return /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(url.split("?")[0]);
+  };
+
   return (
-    <div className="min-h-screen bg-[#09090b] text-white font-sans">
+    <div className="min-h-screen bg-[#09090b] text-white font-sans antialiased">
       <Navbar
+        userEmail={token ? "Student Account" : ""}
         onLogout={() => {
           localStorage.removeItem("token");
           window.location.href = "/login";
@@ -164,58 +201,58 @@ const Dashboard = () => {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <main className="max-w-7xl mx-auto p-6 md:p-8">
-        {/* STATS SECTION */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-2xl">
-            <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* STATS SECTION - Fluid row stack sizing on mobile phones */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="bg-zinc-950 border border-zinc-900 p-5 rounded-2xl shadow-sm">
+            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">
               My Uploads
             </p>
-            <p className="text-3xl font-bold text-white">
+            <p className="text-3xl font-black text-zinc-100">
               {userStats.uploadCount}
             </p>
           </div>
-          <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-2xl">
-            <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1">
+          <div className="bg-zinc-950 border border-zinc-900 p-5 rounded-2xl shadow-sm">
+            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">
               Total Reach
             </p>
-            <p className="text-3xl font-bold text-blue-400">
+            <p className="text-3xl font-black text-blue-500">
               {userStats.downloadCount}
             </p>
           </div>
-          <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-2xl">
-            <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1">
+          <div className="bg-zinc-950 border border-zinc-900 p-5 rounded-2xl shadow-sm">
+            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">
               Avg. Impact
             </p>
-            <p className="text-3xl font-bold text-emerald-400">
+            <p className="text-3xl font-black text-emerald-500">
               {userStats.impact}x
             </p>
           </div>
         </div>
 
-        {/* SEARCH & FILTERS */}
-        <div className="space-y-6 mb-10">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="relative w-full md:w-96">
+        {/* SEARCH & LIBRARY TOGGLE NAVIGATION CONTROLS */}
+        <div className="space-y-6 mb-8">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full sm:w-80 md:w-96">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
-                size={18}
+                size={16}
               />
               <input
                 type="text"
                 placeholder="Search resources..."
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-zinc-200 outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-zinc-500"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+            <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-900 w-full sm:w-auto justify-center">
               <button
                 onClick={() => setViewMode("all")}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+                className={`flex-1 sm:flex-none px-5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   viewMode === "all"
-                    ? "bg-zinc-100 text-black shadow-lg"
+                    ? "bg-zinc-900 text-white shadow-inner border border-zinc-800"
                     : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
@@ -223,9 +260,9 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => setViewMode("mine")}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+                className={`flex-1 sm:flex-none px-5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   viewMode === "mine"
-                    ? "bg-zinc-100 text-black shadow-lg"
+                    ? "bg-zinc-900 text-white shadow-inner border border-zinc-800"
                     : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
@@ -234,15 +271,16 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+          {/* HORIZONTAL CATEGORY SCROLL CONTAINER */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
             {["All", "Notes", "Book", "PYQ"].map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
+                className={`px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap snap-center ${
                   selectedCategory === cat
-                    ? "bg-blue-600 text-white"
-                    : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-900/20"
+                    : "bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800"
                 }`}
               >
                 {cat}
@@ -251,82 +289,105 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* RESOURCE GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* FULLY RESPONSIVE BREAKPOINT GRID FOR MOVIE-STYLED CONTENT CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {loading ? (
-            [...Array(6)].map((_, index) => <SkeletonCard key={index} />)
+            [...Array(8)].map((_, index) => <SkeletonCard key={index} />)
           ) : filteredResources.length > 0 ? (
             filteredResources.map((res) => (
               <div
                 key={res.id}
-                className="group bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all"
+                className="group bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden hover:border-zinc-800 transition-all flex flex-col justify-between shadow-xl"
               >
-                <div className="relative h-44 bg-zinc-800">
-                  <img
-                    src={getThumbnail(res.fileUrl)}
-                    alt="Preview"
-                    className="w-full h-full object-cover opacity-50 group-hover:opacity-80 transition-opacity"
-                    onError={(e) => {
-                      e.target.src =
-                        "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=400&h=300&auto=format&fit=crop";
-                    }}
-                  />
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-blue-600 text-[10px] font-bold uppercase tracking-widest rounded shadow-lg">
-                    {res.category}
+                <div>
+                  {/* Dynamic Interactive Banner Display */}
+                  <div className="relative h-40 bg-zinc-900 overflow-hidden">
+                    {hasImageExtension(res.fileUrl) ? (
+                      <img
+                        src={getThumbnail(res.fileUrl)}
+                        alt="Resource Header"
+                        className="w-full h-full object-cover opacity-40 group-hover:scale-105 group-hover:opacity-60 transition-all duration-300"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <CategoryPlaceholder category={res.category} />
+                    )}
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
+
+                    <span className="absolute top-3 left-3 bg-blue-600 text-[9px] font-black tracking-widest uppercase px-2.5 py-1 rounded-md shadow-md select-none">
+                      {res.category}
+                    </span>
+
+                    {res.ownerId === currentUserId && (
+                      <button
+                        onClick={() => handleDelete(res.id)}
+                        className="absolute top-3 right-3 p-2 bg-black/40 border border-white/5 hover:bg-red-500/90 rounded-xl transition-all backdrop-blur-md md:opacity-0 md:group-hover:opacity-100"
+                      >
+                        <Trash2
+                          size={14}
+                          className="text-zinc-200 group-hover:text-white"
+                        />
+                      </button>
+                    )}
                   </div>
-                  {res.ownerId === currentUserId && (
-                    <button
-                      onClick={() => handleDelete(res.id)}
-                      className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-red-500/80 rounded-full transition-colors backdrop-blur-md"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
+
+                  {/* Body Info Wrapper */}
+                  <div className="p-4">
+                    <div className="flex justify-between items-center gap-2 mb-1">
+                      {/* Safety Truncation on Header */}
+                      <h3 className="text-sm font-bold text-zinc-100 truncate flex-1 group-hover:text-blue-400 transition-colors">
+                        {res.title}
+                      </h3>
+                      <span className="text-emerald-400 font-black text-xs shrink-0 bg-emerald-500/5 border border-emerald-500/10 px-1.5 py-0.5 rounded">
+                        {parseFloat(res.price) === 0 || !res.price
+                          ? "FREE"
+                          : `$${res.price}`}
+                      </span>
+                    </div>
+                    {/* Multi-line clamp boundaries to contain vertical heights cleanly */}
+                    <p className="text-zinc-500 text-xs line-clamp-2 mt-1 min-h-[2rem]">
+                      {res.description ||
+                        "No description provided for this campus resource asset."}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold text-zinc-100 line-clamp-1">
-                      {res.title}
-                    </h3>
-                    <span className="text-emerald-400 font-bold text-sm">
-                      ${res.price}
-                    </span>
-                  </div>
-                  <p className="text-zinc-500 text-xs line-clamp-2 mb-6 h-8">
-                    {res.description}
-                  </p>
-                  <div className="flex items-center justify-between pt-4 border-t border-zinc-800/50">
-                    <div className="flex items-center gap-1 text-[11px] text-zinc-400">
-                      <Download size={12} /> {res.downloads || 0} Downloads
-                    </div>
-                    <button
-                      onClick={() => handleDownload(res.id, res.fileUrl)}
-                      className="flex items-center gap-2 px-4 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-blue-500 hover:text-white transition-all"
-                    >
-                      View <ExternalLink size={14} />
-                    </button>
-                  </div>
+                {/* Footer Controls Row */}
+                <div className="p-4 pt-0 mt-2 flex items-center justify-between text-[11px] text-zinc-400 border-t border-zinc-900/50">
+                  <span className="flex items-center gap-1 mt-3 select-none">
+                    <Download size={12} className="text-zinc-500" />{" "}
+                    {res.downloads || 0} hits
+                  </span>
+                  <button
+                    onClick={() => handleDownload(res.id, res.fileUrl)}
+                    className="mt-3 flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs font-bold rounded-lg hover:bg-white hover:text-black hover:border-white transition-all shadow-sm"
+                  >
+                    View <ExternalLink size={12} />
+                  </button>
                 </div>
               </div>
             ))
           ) : (
-            <div className="col-span-full flex flex-col items-center justify-center py-20 px-4 text-center bg-zinc-900/10 border border-dashed border-zinc-800 rounded-3xl">
-              <div className="w-20 h-20 bg-zinc-900/50 rounded-full flex items-center justify-center mb-6 border border-zinc-800">
-                <FolderOpen size={40} className="text-zinc-600" />
+            /* Empty State Container Box */
+            <div className="col-span-full flex flex-col items-center justify-center py-20 px-4 text-center bg-zinc-950 border border-dashed border-zinc-900 rounded-3xl">
+              <div className="w-16 h-16 bg-zinc-900/30 rounded-full flex items-center justify-center mb-4 border border-zinc-800/80">
+                <FolderOpen size={28} className="text-zinc-600" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">
+              <h3 className="text-base font-bold text-white mb-1">
                 No resources found
               </h3>
-              <p className="text-zinc-500 max-w-sm mb-8">
+              <p className="text-zinc-500 text-xs max-w-xs mb-6">
                 {searchQuery
-                  ? `We couldn't find anything matching "${searchQuery}". Try a different keyword.`
-                  : "This space is empty! Be the hero your campus needs and upload the first resource."}
+                  ? `We couldn't find anything matching "${searchQuery}". Try adjusting your query labels.`
+                  : "This space is currently empty. Be the hero your department needs and push the initial update!"}
               </p>
               {!searchQuery && (
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-900/10"
                 >
                   Upload Now
                 </button>
@@ -336,7 +397,6 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* ➔ 3. Fixed: Bound our custom upload handler to update state arrays flawlessly */}
       <UploadModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
