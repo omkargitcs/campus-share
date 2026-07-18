@@ -1,28 +1,38 @@
 const express = require("express");
 const router = express.Router();
-const upload = require("../middleware/multer"); // Import the working upload middleware
-const { uploadResource } = require("../controllers/resourceController"); // Adjust path if needed
-// const { protect } = require("../middleware/authMiddleware"); // Uncomment if you are enforcing user sessions
+const upload = require("../middleware/multer");
+const {
+  uploadResource,
+  trackDownloadStat,
+  getAllResources,
+  deleteResource,
+  incrementStats,
+  redirectToResource,
+} = require("../controllers/resourceController");
 
-// Define the API endpoint route correctly
-router.post("/upload", upload.single("file"), uploadResource);
+// Import the auth middleware to handle user session/token validation
+const auth = require("../middleware/auth");
 
-// 2. Change the path to '/upload' for clarity
-// 3. Add 'upload.single('file')' - This is the "bridge" that handles the PDF
-router.post(
-  "/upload",
-  auth, // 1. Authenticate user string validation
-  upload.single("file"), // 2. Parse file stream
-  resourceController.uploadResource,
-);
-// routes/resource.js
+// --- POST Routes ---
+// Handles the PDF/document upload stream and saves it to the database
+router.post("/upload", auth, upload.single("file"), uploadResource);
 
-// Add this alongside your existing GET and POST routes
-router.post("/stats/:id", resourceController.trackDownloadStat);
+// Track download statistics for a specific resource
+router.post("/stats/:id", trackDownloadStat);
 
-router.get("/", resourceController.getAllResources);
-router.delete("/:id", auth, resourceController.deleteResource);
-router.patch("/stats/:id", auth, resourceController.incrementStats);
-router.get("/download/:id", resourceController.redirectToResource);
+// --- GET Routes ---
+// Fetch all campus resources
+router.get("/", getAllResources);
+
+// Securely redirect to the raw resource URL (e.g., AWS S3 bucket path)
+router.get("/download/:id", redirectToResource);
+
+// --- PATCH / UPDATE Routes ---
+// Increment view or download interaction metrics
+router.patch("/stats/:id", auth, incrementStats);
+
+// --- DELETE Routes ---
+// Securely remove a resource from the platform
+router.delete("/:id", auth, deleteResource);
 
 module.exports = router;
