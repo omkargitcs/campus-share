@@ -187,6 +187,8 @@ const Dashboard = () => {
     <div className="min-h-screen bg-[#09090b] text-white font-sans antialiased">
       <Navbar
         userEmail={token ? "Student Account" : ""}
+        searchTerm={searchQuery}
+        setSearchTerm={setSearchQuery}
         onLogout={() => {
           localStorage.removeItem("token");
           window.location.href = "/login";
