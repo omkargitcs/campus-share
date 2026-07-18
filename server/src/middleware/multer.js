@@ -1,9 +1,13 @@
-// Inside your routes file
 const multer = require("multer");
 
-// WRONG: const upload = multer({ dest: 'uploads/' }); // This doesn't create a buffer!
-// RIGHT: Use memory storage to handle buffers seamlessly
+// Configure storage in memory so buffers can be easily forwarded to AWS S3
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
-router.post("/upload", upload.single("file"), uploadResource);
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB file limit
+  },
+});
+
+module.exports = upload;
