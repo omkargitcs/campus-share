@@ -5,7 +5,9 @@ import API from "../api";
 const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Computer Science");
+  const [category, setCategory] = useState("Notes");
+  // 1. Added description tracking state
+  const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,19 +33,23 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
     formData.append("file", file);
     formData.append("title", title);
     formData.append("category", category);
+    // 2. Pass the custom description text to the server payload
+    formData.append(
+      "description",
+      description || `Shared ${category} asset for this course structure.`,
+    );
 
     try {
-      // Let Axios automatically manage the multipart boundaries,
-      // and let your api.js interceptor attach the Authorization token!
       const response = await API.post("/resources/upload", formData);
 
       if (response.data && response.data.resource) {
-        // ➔ Send ONLY the resource object, matching your existing dashboard entries!
         onUploadSuccess(response.data.resource);
       }
-      // Reset form on successful upload
+      // Reset form variables on success
       setFile(null);
       setTitle("");
+      setDescription(""); // Clear description state
+      setCategory("Notes");
       onClose();
     } catch (err) {
       console.error("Upload Error Context:", err.response?.data || err.message);
@@ -121,7 +127,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
             )}
           </div>
 
-          {/* Inputs */}
+          {/* Inputs Container */}
           <div className="space-y-4">
             <div>
               <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">
@@ -146,11 +152,24 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
               >
-                <option>Computer Science</option>
-                <option>Information Technology</option>
-                <option>Mathematics</option>
-                <option>Physics</option>
+                <option value="Notes">Notes</option>
+                <option value="Book">Book</option>
+                <option value="PYQ">PYQ</option>
               </select>
+            </div>
+
+            {/* 3. NEW DESCRIPTION TEXTAREA FORM ITEM */}
+            <div>
+              <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief summary of syllabus contents, chapters, or author details..."
+                rows={3}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition resize-none placeholder-zinc-600"
+              />
             </div>
           </div>
 
