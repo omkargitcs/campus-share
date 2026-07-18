@@ -1,12 +1,14 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const cloudinary = require("cloudinary").v2;
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
-// Configure Cloudinary explicitly with your environment strings
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+// Initialize the AWS S3 Client
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
 });
 
 exports.uploadResource = async (req, res) => {
@@ -23,45 +25,31 @@ exports.uploadResource = async (req, res) => {
       return res.status(400).json({ message: "Please upload a file" });
     }
 
-    // Clean the actual file name they uploaded (e.g., "React Notes.pdf" -> "React_Notes")
+    // Clean the file name (e.g., "React Notes.pdf" -> "React_Notes")
     const originalNameWithoutExt = req.file.originalname
       .split(".")
       .slice(0, -1)
       .join(".")
       .replace(/[^a-zA-Z0-9-_]/g, "_");
 
-    const uploadFromBuffer = (fileBuffer) => {
-      return new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: "campus_share_resources",
-            resource_type: "auto", // Let Cloudinary handle the raw document parsing
-            access_mode: "public", // FIX: Changed from "anonymous" to "public"
-            // Keeps the clean name and appends .pdf so it opens smoothly in browser tabs
-            public_id: `${originalNameWithoutExt}.pdf`,
-          },
-          (error, result) => {
-            if (error) {
-              console.error("DETAILED_CLOUDINARY_STREAM_ERROR:", error);
-              return reject(error);
-            }
-            resolve(result);
-          },
-        );
+    // Enforce uniform unique filename structure inside the bucket
+    const uniqueFileName = `resources/${Date.now()}_${originalNameWithoutExt}.pdf`;
 
-        uploadStream.end(fileBuffer);
-      });
+    // Configure the S3 upload payload parameters
+    const uploadParams = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: uniqueFileName,
+      Body: req.file.buffer, // Direct buffer access from Multer memory storage
+      ContentType: "application/pdf", // Ensures the browser renders it smoothly instead of forcing a download
     };
 
-    const cloudinaryResult = await uploadFromBuffer(req.file.buffer);
-    const savedFilePath = cloudinaryResult?.secure_url;
+    // Execute the upload command to your bucket
+    await s3Client.send(new PutObjectCommand(uploadParams));
 
-    if (!savedFilePath) {
-      return res.status(400).json({
-        message: "File uploaded but cloud storage path could not be parsed.",
-      });
-    }
+    // Construct the direct public URL path structure for S3
+    const savedFilePath = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueFileName}`;
 
+    // Create the resource record in PostgreSQL using Prisma
     const newResource = await prisma.resource.create({
       data: {
         title,
@@ -74,13 +62,13 @@ exports.uploadResource = async (req, res) => {
     });
 
     res.status(201).json({
-      message: "Resource uploaded successfully!",
+      message: "Resource uploaded successfully to S3!",
       resource: newResource,
     });
   } catch (error) {
-    console.error("CLOUDINARY_PRISMA_UPLOAD_ERROR:", error);
+    console.error("AWS_S3_PRISMA_UPLOAD_ERROR:", error);
     res.status(500).json({
-      message: "Internal server error during upload",
+      message: "Internal server error during S3 upload",
       error: error.message,
     });
   }
@@ -102,7 +90,6 @@ exports.deleteResource = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Double check if this card exists before deleting
     const resource = await prisma.resource.findUnique({
       where: { id: id.toString() },
     });
@@ -111,7 +98,6 @@ exports.deleteResource = async (req, res) => {
       return res.status(404).json({ message: "Resource not found" });
     }
 
-    // 2. Clear out the resource record directly
     await prisma.resource.delete({
       where: { id: id.toString() },
     });
@@ -123,7 +109,7 @@ exports.deleteResource = async (req, res) => {
     if (error.code === "P2003") {
       return res.status(400).json({
         message:
-          "Cannot delete this resource because other tracking stats or tables depend on it.",
+          "Cannot delete this resource because other tracking stats depend on it.",
       });
     }
 
@@ -159,7 +145,6 @@ exports.redirectToResource = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Increment the download stat inside the database directly
     const updatedResource = await prisma.resource.update({
       where: { id: id.toString() },
       data: {
@@ -171,7 +156,6 @@ exports.redirectToResource = async (req, res) => {
       return res.status(404).send("Resource file not found.");
     }
 
-    // 2. Redirect the browser tab directly to the secure Cloudinary URL location
     return res.redirect(updatedResource.fileUrl);
   } catch (error) {
     console.error("REDIRECT_RESOURCE_ERROR:", error);
@@ -190,7 +174,6 @@ exports.trackDownloadStat = async (req, res) => {
       return res.status(400).json({ message: "Invalid stat type" });
     }
 
-    // Increment the downloads column by 1 atomically (Handles both String and Number schemas seamlessly)
     const updatedResource = await prisma.resource.update({
       where: { id: parseInt(id) || id },
       data: {
