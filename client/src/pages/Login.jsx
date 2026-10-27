@@ -17,8 +17,9 @@ const Login = () => {
     try {
       const { data } = await API.post("/auth/login", { email, password });
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify({ email: data.user.email, role: data.user.role }));
       toast.success("Welcome back to Campus Share!");
-      window.location.href = "/Dashboard";
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       toast.error(err.response?.data?.message || "Invalid credentials");
     } finally {
@@ -70,12 +71,6 @@ const Login = () => {
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 Password
               </label>
-              <a
-                href="#"
-                className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
-              >
-                Forgot?
-              </a>
             </div>
             <div className="relative group">
               <Lock
