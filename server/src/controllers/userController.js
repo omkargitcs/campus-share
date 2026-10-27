@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require("../db");
 
 exports.getProfile = async (req, res) => {
   try {
@@ -16,6 +15,9 @@ exports.getProfile = async (req, res) => {
         _count: { select: { resources: true } }
       }
     });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     res.json(user);
   } catch (error) {
     console.error("PROFILER_ERR:", error);
