@@ -1,5 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../db");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 // Initialize the AWS S3 Client
@@ -98,6 +97,14 @@ exports.deleteResource = async (req, res) => {
       return res.status(404).json({ message: "Resource not found" });
     }
 
+    const isOwner = resource.ownerId === req.user.id;
+    const isAdmin = req.user.role === "ADMIN";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        message: "You do not have permission to delete this resource",
+      });
+    }
+
     await prisma.resource.delete({
       where: { id: id.toString() },
     });
@@ -125,10 +132,13 @@ exports.incrementStats = async (req, res) => {
     const { id } = req.params;
     const { type } = req.body;
 
-    const fieldToIncrement = type === "downloads" ? "downloads" : "views";
+    if (!["views", "downloads"].includes(type)) {
+      return res.status(400).json({ message: "Invalid stat type" });
+    }
+    const fieldToIncrement = type;
 
     const updatedResource = await prisma.resource.update({
-      where: { id: parseInt(id) || id },
+      where: { id },
       data: {
         [fieldToIncrement]: { increment: 1 },
       },
@@ -175,7 +185,7 @@ exports.trackDownloadStat = async (req, res) => {
     }
 
     const updatedResource = await prisma.resource.update({
-      where: { id: parseInt(id) || id },
+      where: { id },
       data: {
         downloads: {
           increment: 1,
