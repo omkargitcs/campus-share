@@ -44,15 +44,6 @@
 
 ## 🏗 Architecture
 
-```mermaid
-flowchart LR
-    U[Browser<br/>React + Vite] -->|JWT over HTTPS| A[Express API]
-    A --> M{Middleware<br/>helmet · CORS · rate limit<br/>auth · role checks}
-    M --> P[(PostgreSQL<br/>via Prisma)]
-    M --> S[(AWS S3<br/>private bucket)]
-    S -. 5 min signed URL .-> U
-```
-
 **How a file is opened:** the browser asks `GET /api/resources/:id/access`. The API verifies the token, loads the user's current role, checks team membership and approval status, then returns a signed S3 link that expires in 5 minutes.
 
 ```mermaid
