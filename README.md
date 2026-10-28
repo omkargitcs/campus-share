@@ -37,7 +37,7 @@ The interface is designed like a **library catalogue**: resources are rows on a 
     <td width="50%"><img src="docs/screenshots/02-library-dark.png" alt="Library in the dark theme" /></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Library, light theme.</b> Coloured spines per category, and the selected row marked in yellow.</sub></td>
+    <td align="center"><sub><b>Teams on the left; the selected team's review queue, uploads and members on the right.</sub></td>
     <td align="center"><sub><b>Library, dark theme.</b> Follows your system on first visit and remembers your choice.</sub></td>
   </tr>
 </table>
@@ -45,7 +45,7 @@ The interface is designed like a **library catalogue**: resources are rows on a 
 <p align="center">
   <img src="docs/screenshots/03-teacher-review.png" alt="Teacher dashboard with a team selected and its review queue" width="100%" />
   <br />
-  <sub><b>Teacher dashboard.</b> Teams on the left; the selected team's review queue, uploads and members on the right.</sub>
+  <td align="center"><sub><b>Library, light theme.</b> Coloured spines per category, and the selected row marked in yellow.</sub></td>
 </p>
 
 ---
