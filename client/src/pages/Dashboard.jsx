@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { UserContext } from "./utils/UserContext";
 import {
   Trash2,
   ExternalLink,
