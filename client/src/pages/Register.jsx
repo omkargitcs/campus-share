@@ -1,20 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { UserPlus, Mail, Lock, Loader2, GraduationCap } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import API from "../api";
-import CampusShareLogo from "../components/CampusShareLogo"; // Make sure this exists!
+import AuthLayout from "../components/AuthLayout";
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    teacherCode: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "", teacherCode: "" });
   const [isTeacher, setIsTeacher] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  const set = (key) => (e) => setFormData((f) => ({ ...f, [key]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,146 +20,63 @@ const Register = () => {
     setError("");
 
     try {
-      const payload = {
-        email: formData.email.trim(),
-        password: formData.password,
-      };
-      if (isTeacher && formData.teacherCode.trim()) {
-        payload.teacherCode = formData.teacherCode.trim();
-      }
+      const payload = { email: formData.email.trim(), password: formData.password };
+      if (isTeacher && formData.teacherCode.trim()) payload.teacherCode = formData.teacherCode.trim();
       await API.post("/auth/register", payload);
       toast.success("Account created! Please log in.");
       navigate("/login", { replace: true });
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Registration failed. Try a different email.",
-      );
+      setError(err.response?.data?.message || "Registration failed. Try a different email.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Glows */}
-      <div className="absolute top-[20%] left-[20%] w-[30%] h-[30%] bg-blue-600/5 blur-[120px] rounded-full"></div>
-      <div className="absolute bottom-[20%] right-[20%] w-[30%] h-[30%] bg-emerald-600/5 blur-[120px] rounded-full"></div>
+    <AuthLayout
+      title="Create your account"
+      subtitle="Register with your university email to start sharing."
+      footer={
+        <>
+          Already registered?{" "}
+          <Link to="/login" className="font-semibold text-link hover:underline">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && <p role="alert" className="notice-error">{error}</p>}
 
-      {/* Main Card */}
-      <div className="relative w-full max-w-lg bg-zinc-900/50 border border-zinc-800 backdrop-blur-xl p-10 md:p-12 rounded-3xl shadow-2xl">
-        <div className="text-center mb-10">
-          <CampusShareLogo className="w-20 h-20 mx-auto mb-6" />
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-100">
-            Join CampusShare
-          </h1>
-          <p className="text-zinc-500 text-base mt-3 max-w-sm mx-auto">
-            Create an account to start sharing notes and resources with your
-            campus.
-          </p>
+        <div>
+          <label htmlFor="reg-email" className="label">University email</label>
+          <input id="reg-email" type="email" required autoComplete="email" placeholder="yourname@mithibai.ac.in" className="field" value={formData.email} onChange={set("email")} />
         </div>
 
-        {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 ml-1">
-              University Email
-            </label>
-            <div className="relative group">
-              <Mail
-                className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-blue-500 transition-colors"
-                size={18}
-              />
-              <input
-                type="email"
-                required
-                className="w-full bg-[#09090b] text-zinc-100 pl-10 pr-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-zinc-700"
-                placeholder="yourname@mithibai.ac.in"
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 ml-1">
-              Password
-            </label>
-            <div className="relative group">
-              <Lock
-                className="absolute left-3 top-3.5 text-zinc-500 group-focus-within:text-blue-500 transition-colors"
-                size={18}
-              />
-              <input
-                type="password"
-                required
-                className="w-full bg-[#09090b] text-zinc-100 pl-10 pr-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-zinc-700"
-                placeholder="At least 8 characters"
-                minLength={8}
-                maxLength={72}
-                autoComplete="new-password"
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="button"
-              onClick={() => setIsTeacher((v) => !v)}
-              className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors ml-1"
-            >
-              <GraduationCap size={14} />
-              {isTeacher ? "I'm a student" : "I'm a teacher"}
-            </button>
-            {isTeacher && (
-              <input
-                type="password"
-                autoComplete="off"
-                className="mt-3 w-full bg-[#09090b] text-zinc-100 px-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-zinc-700"
-                placeholder="Teacher access code"
-                onChange={(e) =>
-                  setFormData({ ...formData, teacherCode: e.target.value })
-                }
-              />
-            )}
-          </div>
-
-          <button
-            disabled={loading}
-            className="w-full bg-zinc-100 hover:bg-white text-zinc-900 font-bold py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
-          >
-            {loading ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <>
-                <UserPlus size={20} /> Create Account
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="mt-10 text-center border-t border-zinc-800/50 pt-6">
-          <p className="text-zinc-500 text-sm">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-blue-400 font-semibold hover:text-blue-300 hover:underline transition-colors"
-            >
-              Login here
-            </Link>
-          </p>
+        <div>
+          <label htmlFor="reg-pass" className="label">Password</label>
+          <input id="reg-pass" type="password" required minLength={8} maxLength={72} autoComplete="new-password" className="field" value={formData.password} onChange={set("password")} />
+          <p className="hint mt-1.5">At least 8 characters.</p>
         </div>
-      </div>
-    </div>
+
+        <div>
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium">
+            <input type="checkbox" checked={isTeacher} onChange={(e) => setIsTeacher(e.target.checked)} className="h-4 w-4 accent-[var(--cobalt)]" />
+            I'm a teacher
+          </label>
+          {isTeacher && (
+            <div className="mt-3">
+              <label htmlFor="reg-code" className="label">Teacher access code</label>
+              <input id="reg-code" type="password" autoComplete="off" className="field" value={formData.teacherCode} onChange={set("teacherCode")} />
+            </div>
+          )}
+        </div>
+
+        <button type="submit" disabled={loading} className="btn btn-primary w-full !h-11">
+          {loading ? <Loader2 className="animate-spin" size={18} /> : "Create account"}
+        </button>
+      </form>
+    </AuthLayout>
   );
 };
 

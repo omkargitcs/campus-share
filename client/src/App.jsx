@@ -14,6 +14,7 @@ import Teams from "./pages/Teams";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { getStoredUser } from "./utils/auth";
+import { useTheme } from "./utils/theme";
 
 // Login/Register are for logged-out visitors only: if you already have a valid session, skip them.
 // NOTE: the session is read on every render. Reading it once at start-up (as the old code did)
@@ -22,19 +23,20 @@ const PublicOnly = ({ children }) =>
   getStoredUser() ? <Navigate to="/dashboard" replace /> : children;
 
 function App() {
+  const { theme } = useTheme();
   return (
     <>
       <Toaster
-        theme="dark"
+        theme={theme}
         position="top-center"
-        richColors
         toastOptions={{
           style: {
-            background: "#18181b",
-            border: "1px solid #27272a",
-            color: "#ffffff",
-            borderRadius: "12px",
-            padding: "12px",
+            background: "var(--surface)",
+            border: "1px solid var(--line)",
+            color: "var(--fg)",
+            borderRadius: "8px",
+            padding: "12px 14px",
+            fontFamily: "var(--font-sans)",
           },
         }}
       />

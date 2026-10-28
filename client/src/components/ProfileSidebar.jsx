@@ -1,180 +1,125 @@
-import React, { useEffect, useState } from "react";
-import {
-  X,
-  User,
-  Mail,
-  Calendar,
-  FileText,
-  LogOut,
-  Trash2,
-  Loader2,
-} from "lucide-react";
-import API from "../api";
+import React, { useCallback, useEffect, useState } from "react";
+import { X, Trash2, Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import API from "../api";
+import { logout } from "../utils/auth";
+import { spineFor } from "../utils/spines";
 
+// Slides in from the right so it never fights the left sidebar.
 const ProfileSidebar = ({ isOpen, onClose }) => {
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  // Fetch profile data whenever the sidebar opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchProfile();
-    }
-  }, [isOpen]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const res = await API.get("/users/profile");
       setProfile(res.data);
-    } catch (err) {
-      console.error("Profile fetch error:", err);
-      toast.error("Failed to load profile");
+    } catch {
+      toast.error("Couldn't load your profile.");
     }
-  };
+  }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this resource?"))
-      return;
+  useEffect(() => {
+    if (isOpen) fetchProfile();
+  }, [isOpen, fetchProfile]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
+
+  const handleDelete = async (file) => {
+    if (!window.confirm(`Delete "${file.title}"? This can't be undone.`)) return;
     try {
-      setLoading(true);
-      await API.delete(`/resources/${id}`);
+      setBusy(true);
+      await API.delete(`/resources/${file.id}`);
       toast.success("Resource deleted successfully");
-      fetchProfile(); // Refresh the list
-    } catch (err) {
-      console.error("Delete error:", err);
-      toast.error("Failed to delete resource");
+      fetchProfile();
+    } catch {
+      toast.error("Couldn't delete that resource.");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = "/login";
-  };
+  const name = profile?.email?.split("@")[0];
 
   return (
     <>
-      {/* Background Overlay */}
       <div
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ${
-          isOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
+        className={`fixed inset-0 z-[90] bg-[#050a1c]/70 transition-opacity duration-200 ${isOpen ? "visible opacity-100" : "invisible opacity-0"}`}
         onClick={onClose}
+        aria-hidden="true"
       />
-
-      {/* Sliding Sidebar Panel */}
-      <div
-        className={`fixed top-0 left-0 h-full w-80 md:w-96 bg-[#0c0c0e] border-r border-zinc-800 z-50 transform transition-transform duration-500 ease-in-out shadow-2xl ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+      <aside
+        aria-label="My profile"
+        aria-hidden={!isOpen}
+        inert={!isOpen}
+        className={`fixed inset-y-0 right-0 z-[95] flex w-full max-w-md flex-col border-l border-line bg-surface shadow-2xl transition-transform duration-300 ease-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
       >
-        <div className="p-6 flex flex-col h-full">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-bold text-white">My Account</h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {profile ? (
-            <div className="flex flex-col flex-1 overflow-hidden">
-              {/* User Identity Section */}
-              <div className="flex flex-col items-center py-6 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 mb-6">
-                <div className="w-20 h-20 bg-blue-600/10 border border-blue-600/30 rounded-full flex items-center justify-center mb-4">
-                  <User size={40} className="text-blue-500" />
-                </div>
-                <p className="text-zinc-100 font-bold text-lg">
-                  {profile.email.split("@")[0]}
-                </p>
-                <span className="text-[10px] bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full mt-2 uppercase tracking-widest font-black border border-blue-600/30">
-                  {profile.role || "Contributor"}
-                </span>
-              </div>
-
-              {/* Quick Info Grid */}
-              <div className="grid grid-cols-2 gap-3 mb-8">
-                <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
-                  <FileText size={16} className="text-zinc-500 mb-1" />
-                  <p className="text-xl font-bold">
-                    {profile._count?.resources || 0}
-                  </p>
-                  <p className="text-[10px] text-zinc-500 uppercase font-bold">
-                    Total Uploads
-                  </p>
-                </div>
-                <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
-                  <Calendar size={16} className="text-zinc-500 mb-1" />
-                  <p className="text-sm font-bold">
-                    {new Date(profile.createdAt).getFullYear()}
-                  </p>
-                  <p className="text-[10px] text-zinc-500 uppercase font-bold">
-                    Member Since
-                  </p>
-                </div>
-              </div>
-
-              {/* My Uploads List Section */}
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <FileText size={14} /> My Uploaded Files
-                </h3>
-
-                <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
-                  {profile.resources?.length > 0 ? (
-                    profile.resources.map((file) => (
-                      <div
-                        key={file.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/20 border border-zinc-800/50 hover:border-zinc-700 transition-all group"
-                      >
-                        <div className="flex flex-col overflow-hidden max-w-[70%]">
-                          <span className="text-sm text-zinc-200 truncate font-medium">
-                            {file.title}
-                          </span>
-                          <span className="text-[10px] text-zinc-500">
-                            {new Date(file.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <button
-                          disabled={loading}
-                          onClick={() => handleDelete(file.id)}
-                          className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-10 border-2 border-dashed border-zinc-800 rounded-2xl">
-                      <p className="text-sm text-zinc-600 italic">
-                        No resources shared yet
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="animate-spin text-blue-500" size={32} />
-            </div>
-          )}
-
-          {/* Logout Button at bottom */}
-          <button
-            className="mt-6 flex items-center justify-center gap-2 w-full bg-red-500/10 text-red-500 py-3.5 rounded-xl border border-red-500/20 hover:bg-red-600 hover:text-white transition-all font-bold"
-            onClick={handleLogout}
-          >
-            <LogOut size={18} /> Logout
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))]">
+          <h2 className="text-xl font-semibold">My profile</h2>
+          <button type="button" onClick={onClose} aria-label="Close profile" className="icon-btn -mr-2">
+            <X size={18} />
           </button>
         </div>
-      </div>
+
+        {profile ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex items-center gap-4 px-5 py-6">
+              <span className="flex h-14 w-14 items-center justify-center rounded-lg bg-cobalt font-display text-2xl font-bold text-white">
+                {name?.charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-display text-xl font-semibold">{name}</p>
+                <p className="truncate text-sm text-muted">{profile.email}</p>
+                <p className="text-sm text-muted">
+                  {profile.role === "TEACHER" ? "Teacher" : profile.role === "ADMIN" ? "Admin" : "Student"} · member since{" "}
+                  {new Date(profile.createdAt).getFullYear()}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-baseline justify-between border-y border-line px-5 py-3">
+              <h3 className="text-base font-semibold">Your uploads</h3>
+              <span className="text-sm text-muted">{profile._count?.resources || 0} total</span>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {profile.resources?.length > 0 ? (
+                <ul>
+                  {profile.resources.map((file) => (
+                    <li key={file.id} className="relative flex items-center gap-3 border-b border-line py-3 pl-6 pr-3">
+                      <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: spineFor(file.category) }} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{file.title}</p>
+                        <p className="text-xs text-muted">{new Date(file.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <button type="button" disabled={busy} onClick={() => handleDelete(file)} aria-label={`Delete ${file.title}`} className="icon-btn is-danger">
+                        <Trash2 size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-5 py-10 text-sm text-muted">You haven't shared anything yet. Uploads you add appear here.</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="animate-spin text-accent" size={28} />
+          </div>
+        )}
+
+        <div className="border-t border-line p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button type="button" onClick={logout} className="btn btn-danger w-full">
+            <LogOut size={16} /> Log out
+          </button>
+        </div>
+      </aside>
     </>
   );
 };

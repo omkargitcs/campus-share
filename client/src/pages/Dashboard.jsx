@@ -1,73 +1,35 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
-import {
-  Trash2,
-  ExternalLink,
-  Download,
-  FolderOpen,
-  FileText,
-  BookOpen,
-  HelpCircle,
-  Bookmark,
-  Users,
-  Clock,
-  Flag,
-  ArrowUpDown,
-  GraduationCap,
-} from "lucide-react";
+import { Trash2, ExternalLink, Bookmark, Users, Clock, Flag, Plus, Search, X } from "lucide-react";
 import API from "../api";
 import UploadModal from "../components/UploadModal";
-import Navbar from "../components/Navbar";
-import SkeletonCard from "../components/SkeletonCard";
+import AppShell from "../components/AppShell";
+import PageHeader from "../components/PageHeader";
+import SkeletonRow from "../components/SkeletonRow";
 import { toast } from "sonner";
 import { useUser } from "../utils/UserContext";
 import { openResource } from "../utils/openResource";
 import { timeAgo } from "../utils/format";
-
-// Category-themed header art for each card
-const CategoryPlaceholder = ({ category }) => {
-  const normalized = category?.toLowerCase();
-
-  let icon = <FileText size={40} className="text-blue-400/60" />;
-  let gradient = "from-blue-950/40 via-zinc-900 to-zinc-950";
-  let pattern =
-    "bg-[radial-gradient(#1e3a8a_1px,transparent_1px)] [background-size:16px_16px]";
-
-  if (normalized === "book") {
-    icon = <BookOpen size={40} className="text-emerald-400/60" />;
-    gradient = "from-emerald-950/40 via-zinc-900 to-zinc-950";
-    pattern =
-      "bg-[radial-gradient(#064e3b_1px,transparent_1px)] [background-size:16px_16px]";
-  } else if (normalized === "pyq") {
-    icon = <HelpCircle size={40} className="text-purple-400/60" />;
-    gradient = "from-purple-950/40 via-zinc-900 to-zinc-950";
-    pattern =
-      "bg-[radial-gradient(#581c87_1px,transparent_1px)] [background-size:16px_16px]";
-  }
-
-  return (
-    <div
-      className={`w-full h-full bg-gradient-to-b ${gradient} relative flex items-center justify-center overflow-hidden`}
-    >
-      <div className={`absolute inset-0 opacity-20 ${pattern}`} />
-      <div className="relative transform group-hover:scale-110 transition-transform duration-300">
-        {icon}
-      </div>
-    </div>
-  );
-};
+import { spineFor } from "../utils/spines";
 
 const SORTS = {
-  new: {
-    label: "Newest",
-    fn: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-  },
-  popular: {
-    label: "Most opened",
-    fn: (a, b) => (b.downloads || 0) - (a.downloads || 0),
-  },
+  new: { label: "Newest first", fn: (a, b) => new Date(b.createdAt) - new Date(a.createdAt) },
+  popular: { label: "Most opened", fn: (a, b) => (b.downloads || 0) - (a.downloads || 0) },
   az: { label: "A to Z", fn: (a, b) => a.title.localeCompare(b.title) },
 };
+
+const VIEWS = [
+  ["all", "All resources"],
+  ["mine", "My uploads"],
+  ["saved", "Saved"],
+];
+
+const CATEGORIES = ["All", "Notes", "Book", "PYQ"];
+
+// Same columns for the header and every row so the table lines up on desktop.
+const COLS = "lg:grid lg:grid-cols-[minmax(0,1fr)_4.5rem_9.5rem_5.5rem_3.5rem_10rem] lg:items-center lg:gap-x-4";
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 const Dashboard = () => {
   const { user } = useUser();
@@ -83,6 +45,8 @@ const Dashboard = () => {
   const [source, setSource] = useState("all"); // all | public | <teamId>
   const [sortKey, setSortKey] = useState("new");
   const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const searchRef = useRef(null);
 
   const fetchResources = useCallback(async () => {
     try {
@@ -110,25 +74,33 @@ const Dashboard = () => {
     fetchTeams();
   }, [fetchResources, fetchTeams]);
 
-  const taughtIds = useMemo(
-    () => new Set(teams.teaching.map((t) => t.id)),
-    [teams],
-  );
+  // "/" jumps to search, Escape clears the mark
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = e.target.tagName;
+      const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable;
+      if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if (e.key === "Escape" && !typing) {
+        setSelectedId(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  const taughtIds = useMemo(() => new Set(teams.teaching.map((t) => t.id)), [teams]);
   const allTeams = useMemo(() => {
     const map = new Map();
-    [...teams.teaching, ...teams.joined].forEach((t) =>
-      map.set(t.id, { id: t.id, name: t.name }),
-    );
+    [...teams.teaching, ...teams.joined].forEach((t) => map.set(t.id, { id: t.id, name: t.name }));
     return [...map.values()];
   }, [teams]);
 
-  const canDelete = (res) =>
-    res.ownerId === currentUserId || isAdmin || taughtIds.has(res.teamId);
+  const canDelete = (res) => res.ownerId === currentUserId || isAdmin || taughtIds.has(res.teamId);
 
   const pendingForReview = useMemo(
-    () =>
-      resources.filter((r) => r.status === "PENDING" && taughtIds.has(r.teamId))
-        .length,
+    () => resources.filter((r) => r.status === "PENDING" && taughtIds.has(r.teamId)).length,
     [resources, taughtIds],
   );
 
@@ -144,12 +116,7 @@ const Dashboard = () => {
 
   const userStats = useMemo(() => {
     const mine = resources.filter((r) => r.ownerId === currentUserId);
-    const totalOpens = mine.reduce((acc, r) => acc + (r.downloads || 0), 0);
-    return {
-      uploadCount: mine.length,
-      downloadCount: totalOpens,
-      impact: mine.length ? Math.round(totalOpens / mine.length) : 0,
-    };
+    return { uploadCount: mine.length, opens: mine.reduce((acc, r) => acc + (r.downloads || 0), 0) };
   }, [resources, currentUserId]);
 
   const categoryCounts = useMemo(() => {
@@ -169,51 +136,29 @@ const Dashboard = () => {
           res.title?.toLowerCase().includes(q) ||
           res.description?.toLowerCase().includes(q) ||
           res.ownerName?.toLowerCase().includes(q);
-        const matchesCategory =
-          selectedCategory === "All" || res.category === selectedCategory;
+        const matchesCategory = selectedCategory === "All" || res.category === selectedCategory;
         const matchesView =
           viewMode === "all" ||
           (viewMode === "mine" && res.ownerId === currentUserId) ||
           (viewMode === "saved" && res.bookmarked);
-        const matchesSource =
-          source === "all" ||
-          (source === "public" ? !res.teamId : res.teamId === source);
+        const matchesSource = source === "all" || (source === "public" ? !res.teamId : res.teamId === source);
         return matchesSearch && matchesCategory && matchesView && matchesSource;
       })
       .sort(SORTS[sortKey].fn);
-  }, [
-    resources,
-    searchQuery,
-    selectedCategory,
-    viewMode,
-    source,
-    sortKey,
-    currentUserId,
-  ]);
+  }, [resources, searchQuery, selectedCategory, viewMode, source, sortKey, currentUserId]);
 
   const handleOpen = async (res) => {
     try {
       const data = await openResource(res.id);
-      setResources((prev) =>
-        prev.map((r) =>
-          r.id === res.id
-            ? { ...r, downloads: data.downloads ?? r.downloads }
-            : r,
-        ),
-      );
+      setResources((prev) => prev.map((r) => (r.id === res.id ? { ...r, downloads: data.downloads ?? r.downloads } : r)));
     } catch (err) {
-      toast.error(
-        err.response?.data?.message || "Could not open this resource.",
-      );
+      toast.error(err.response?.data?.message || "Could not open this resource.");
     }
   };
 
   const toggleBookmark = async (res) => {
     const next = !res.bookmarked;
-    const apply = (value) =>
-      setResources((prev) =>
-        prev.map((r) => (r.id === res.id ? { ...r, bookmarked: value } : r)),
-      );
+    const apply = (value) => setResources((prev) => prev.map((r) => (r.id === res.id ? { ...r, bookmarked: value } : r)));
     apply(next); // optimistic
     try {
       if (next) await API.put(`/resources/${res.id}/bookmark`);
@@ -236,275 +181,214 @@ const Dashboard = () => {
     }
   };
 
-  const tabClass = (active) =>
-    `flex-1 sm:flex-none px-4 sm:px-5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
-      active
-        ? "bg-zinc-900 text-white shadow-inner border border-zinc-800"
-        : "text-zinc-500 hover:text-zinc-300"
-    }`;
-  const selectClass =
-    "bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 outline-none focus:border-blue-500 transition cursor-pointer";
-
-  const emptyMessage = searchQuery
-    ? `We couldn't find anything matching "${searchQuery}".`
+  const empty = searchQuery
+    ? { title: "No matches", text: `Nothing matches "${searchQuery}". Try a shorter search or a different category.` }
     : viewMode === "saved"
-      ? "Nothing saved yet. Tap the bookmark on any resource to keep it here."
+      ? { title: "Nothing saved yet", text: "Use the bookmark on any resource and it will be kept here." }
       : viewMode === "mine"
-        ? "You haven't uploaded anything yet."
-        : "This space is currently empty. Be the hero your department needs and push the initial update!";
+        ? { title: "No uploads yet", text: "Resources you upload will be listed here." }
+        : { title: "The shelves are empty", text: "Nobody has shared anything here yet. Upload the first resource." };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white font-sans antialiased">
-      <Navbar
-        searchTerm={searchQuery}
-        setSearchTerm={setSearchQuery}
-        onUploadClick={() => setIsModalOpen(true)}
-      />
+    <AppShell wide>
+      <PageHeader
+        title="Library"
+        actions={
+          <button type="button" onClick={() => setIsModalOpen(true)} className="btn btn-primary">
+            <Plus size={17} /> Upload resource
+          </button>
+        }
+      >
+        {userStats.uploadCount > 0
+          ? `You've shared ${plural(userStats.uploadCount, "resource")}, opened ${plural(userStats.opens, "time")} in total.`
+          : "Notes, books and past papers shared across your campus."}
+      </PageHeader>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {pendingForReview > 0 && (
-          <Link
-            to="/teacher"
-            className="mb-4 sm:mb-6 flex items-center justify-between gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-2xl px-4 py-3 hover:bg-amber-500/15 transition"
-          >
-            <span className="flex items-center gap-2 text-sm font-semibold">
-              <GraduationCap size={16} />
-              {pendingForReview} upload{pendingForReview === 1 ? "" : "s"}{" "}
-              waiting for your review
+      {pendingForReview > 0 && (
+        <Link to="/teacher" className="mb-6 flex items-center justify-between gap-3 border-l-4 border-wait bg-surface px-4 py-3 text-sm transition hover:bg-sunk">
+          <span className="flex items-center gap-2">
+            <Clock size={16} className="text-wait" />
+            <span>
+              <strong>{plural(pendingForReview, "upload")}</strong> waiting for your review
             </span>
-            <span className="text-xs font-bold">Review →</span>
-          </Link>
-        )}
+          </span>
+          <span className="font-semibold text-link">Review</span>
+        </Link>
+      )}
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8">
-          {[
-            ["Uploads", userStats.uploadCount, "text-zinc-100"],
-            ["Reach", userStats.downloadCount, "text-blue-500"],
-            ["Impact", `${userStats.impact}x`, "text-emerald-500"],
-          ].map(([label, value, color]) => (
-            <div
-              key={label}
-              className="bg-zinc-950 border border-zinc-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm text-center sm:text-left"
-            >
-              <p className="text-zinc-500 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider sm:tracking-widest mb-0.5 sm:mb-1 truncate">
-                {label}
-              </p>
-              <p className={`text-xl sm:text-3xl font-black ${color}`}>
-                {value}
-              </p>
-            </div>
-          ))}
+      <div role="tablist" aria-label="Show" className="-mx-4 flex gap-6 overflow-x-auto border-b border-line px-4 md:mx-0 md:px-0">
+        {VIEWS.map(([key, label]) => (
+          <button key={key} type="button" role="tab" aria-selected={viewMode === key} onClick={() => setViewMode(key)} className="tab">
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="relative md:max-w-md md:flex-1">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            ref={searchRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setSearchQuery("");
+                e.target.blur();
+              }
+            }}
+            placeholder="Search title, description or uploader"
+            aria-label="Search resources"
+            className="field !h-10 pl-9 pr-10"
+          />
+          {searchQuery ? (
+            <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear search" className="icon-btn absolute right-0.5 top-1/2 !h-9 !w-9 -translate-y-1/2">
+              <X size={15} />
+            </button>
+          ) : (
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 text-xs text-muted lg:block">/</kbd>
+          )}
         </div>
 
-        <div className="space-y-4 mb-6 sm:mb-8">
-          <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-            <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-900 w-full lg:w-auto justify-center">
-              <button
-                onClick={() => setViewMode("all")}
-                className={tabClass(viewMode === "all")}
-              >
-                All Resources
-              </button>
-              <button
-                onClick={() => setViewMode("mine")}
-                className={tabClass(viewMode === "mine")}
-              >
-                My Uploads
-              </button>
-              <button
-                onClick={() => setViewMode("saved")}
-                className={tabClass(viewMode === "saved")}
-              >
-                Saved
-              </button>
-            </div>
-
-            <div className="flex gap-2 w-full lg:w-auto">
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                className={`${selectClass} flex-1 lg:flex-none`}
-                aria-label="Filter by source"
-              >
-                <option value="all">All sources</option>
-                <option value="public">Public only</option>
-                {allTeams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-              <div className="relative flex-1 lg:flex-none">
-                <ArrowUpDown
-                  size={12}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
-                />
-                <select
-                  value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value)}
-                  className={`${selectClass} pl-8 w-full`}
-                  aria-label="Sort resources"
-                >
-                  {Object.entries(SORTS).map(([key, s]) => (
-                    <option key={key} value={key}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-1 snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
-            {["All", "Notes", "Book", "PYQ"].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 sm:px-5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap snap-center flex items-center gap-2 ${
-                  selectedCategory === cat
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-900/20"
-                    : "bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800"
-                }`}
-              >
-                {cat}
-                <span
-                  className={`text-[10px] ${selectedCategory === cat ? "text-blue-200" : "text-zinc-600"}`}
-                >
-                  {categoryCounts[cat] || 0}
-                </span>
-              </button>
+        <div className="flex gap-2 md:ml-auto">
+          <select value={source} onChange={(e) => setSource(e.target.value)} aria-label="Filter by source" className="field !h-10 min-w-0 flex-1 md:!w-auto md:flex-none">
+            <option value="all">All sources</option>
+            <option value="public">Public only</option>
+            {allTeams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
             ))}
-          </div>
+          </select>
+          <select value={sortKey} onChange={(e) => setSortKey(e.target.value)} aria-label="Sort resources" className="field !h-10 min-w-0 flex-1 md:!w-auto md:flex-none">
+            {Object.entries(SORTS).map(([key, s]) => (
+              <option key={key} value={key}>{s.label}</option>
+            ))}
+          </select>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {loading ? (
-            [...Array(8)].map((_, index) => <SkeletonCard key={index} />)
-          ) : filteredResources.length > 0 ? (
-            filteredResources.map((res) => (
-              <div
-                key={res.id}
-                className="group bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden hover:border-zinc-800 transition-all flex flex-col justify-between shadow-xl"
-              >
-                <div>
-                  <div className="relative h-40 bg-zinc-900 overflow-hidden">
-                    <CategoryPlaceholder category={res.category} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
+      <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+        {CATEGORIES.map((cat) => (
+          <button key={cat} type="button" aria-pressed={selectedCategory === cat} onClick={() => setSelectedCategory(cat)} className="chip">
+            {cat !== "All" && <span className="h-3 w-1.5 rounded-sm" style={{ background: spineFor(cat) }} />}
+            {cat}
+            <span className="count">{categoryCounts[cat] || 0}</span>
+          </button>
+        ))}
+      </div>
 
-                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
-                      <span className="bg-blue-600 text-[9px] font-black tracking-widest uppercase px-2.5 py-1 rounded-md shadow-md select-none">
-                        {res.category}
-                      </span>
+      <p className="mb-2 mt-6 text-sm text-muted" aria-live="polite">
+        {loading ? "Loading the library…" : `Showing ${filteredResources.length} of ${plural(resources.length, "resource")}`}
+      </p>
+
+      <div className={`hidden border-b border-line pb-2 pl-6 pr-3 text-sm font-medium text-muted ${COLS}`}>
+        <span>Title</span>
+        <span>Category</span>
+        <span>Source</span>
+        <span>Added</span>
+        <span>Opens</span>
+        <span />
+      </div>
+
+      {loading ? (
+        <ul>
+          {[...Array(7)].map((_, i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </ul>
+      ) : filteredResources.length > 0 ? (
+        <ul>
+          {filteredResources.map((res) => {
+            const isSel = selectedId === res.id;
+            return (
+              <li key={res.id} data-marked={isSel} className="row">
+                <span className="spine" style={{ background: spineFor(res.category) }} />
+                <span className="mark" />
+                <div className={`content py-3.5 pl-6 pr-3 ${COLS}`}>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <button
+                        type="button"
+                        aria-pressed={isSel}
+                        onClick={() => setSelectedId(isSel ? null : res.id)}
+                        className="stretch min-w-0 truncate text-left text-[15px] font-semibold"
+                      >
+                        {res.title}
+                      </button>
                       {res.status === "PENDING" && (
-                        <span className="bg-amber-500/90 text-black text-[9px] font-black tracking-wider uppercase px-2 py-1 rounded-md flex items-center gap-1">
-                          <Clock size={10} /> Awaiting approval
+                        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-wait">
+                          <Clock size={12} /> Awaiting approval
                         </span>
                       )}
                       {res.status === "FLAGGED" && (
-                        <span className="bg-red-500/90 text-white text-[9px] font-black tracking-wider uppercase px-2 py-1 rounded-md flex items-center gap-1">
-                          <Flag size={10} /> Flagged
+                        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-danger">
+                          <Flag size={12} /> Flagged
                         </span>
                       )}
                     </div>
-
-                    <div className="absolute top-3 right-3 flex gap-1.5">
-                      <button
-                        onClick={() => toggleBookmark(res)}
-                        aria-label={
-                          res.bookmarked
-                            ? "Remove from saved"
-                            : "Save for later"
-                        }
-                        className={`p-2 border rounded-xl transition-all backdrop-blur-md active:scale-90 ${
-                          res.bookmarked
-                            ? "bg-blue-600/90 border-blue-400/40 text-white"
-                            : "bg-black/40 border-white/5 text-zinc-200 hover:bg-blue-600/80 md:opacity-0 md:group-hover:opacity-100"
-                        }`}
-                      >
-                        <Bookmark
-                          size={14}
-                          fill={res.bookmarked ? "currentColor" : "none"}
-                        />
-                      </button>
-                      {canDelete(res) && (
-                        <button
-                          onClick={() => handleDelete(res)}
-                          aria-label="Delete resource"
-                          className="p-2 bg-black/40 border border-white/5 hover:bg-red-500/90 rounded-xl transition-all backdrop-blur-md md:opacity-0 md:group-hover:opacity-100"
-                        >
-                          <Trash2 size={14} className="text-zinc-200" />
-                        </button>
-                      )}
-                    </div>
+                    <p className="truncate text-sm text-muted">
+                      {res.ownerName}
+                      <span className="lg:hidden">
+                        {" "}
+                        · {res.category} · {timeAgo(res.createdAt)} · {plural(res.downloads || 0, "open")}
+                        {res.team ? ` · ${res.team.name}` : ""}
+                      </span>
+                    </p>
+                    {isSel && <p className="mt-2 max-w-[62ch] text-sm">{res.description || "No description added."}</p>}
                   </div>
 
-                  <div className="p-4">
-                    <h3 className="text-sm font-bold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
-                      {res.title}
-                    </h3>
-                    <p className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1.5 truncate">
-                      <span className="truncate">{res.ownerName}</span>
-                      <span>·</span>
-                      <span className="shrink-0">{timeAgo(res.createdAt)}</span>
-                      {res.team && (
-                        <span className="ml-auto shrink-0 flex items-center gap-1 text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded max-w-[45%]">
-                          <Users size={10} className="shrink-0" />
-                          <span className="truncate">{res.team.name}</span>
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-zinc-500 text-xs line-clamp-2 mt-2 min-h-[2rem]">
-                      {res.description ||
-                        "No description provided for this campus resource."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 pt-0 mt-2 flex items-center justify-between text-[11px] text-zinc-400 border-t border-zinc-900/50">
-                  <span className="flex items-center gap-1 mt-3 select-none">
-                    <Download size={12} className="text-zinc-500" />{" "}
-                    {res.downloads || 0} opens
+                  <span className="hidden text-sm lg:block">{res.category}</span>
+                  <span className="hidden min-w-0 items-center gap-1.5 text-sm text-muted lg:flex">
+                    {res.team ? (
+                      <>
+                        <Users size={13} className="shrink-0" />
+                        <span className="truncate">{res.team.name}</span>
+                      </>
+                    ) : (
+                      "Public"
+                    )}
                   </span>
-                  <button
-                    onClick={() => handleOpen(res)}
-                    className="mt-3 flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs font-bold rounded-lg hover:bg-white hover:text-black hover:border-white transition-all shadow-sm"
-                  >
-                    View <ExternalLink size={12} />
-                  </button>
+                  <span className="hidden text-sm text-muted lg:block">{timeAgo(res.createdAt)}</span>
+                  <span className="hidden text-sm tabular-nums text-muted lg:block">{res.downloads || 0}</span>
+
+                  <div className="above mt-2 flex items-center justify-end gap-1 lg:mt-0">
+                    <button
+                      type="button"
+                      onClick={() => toggleBookmark(res)}
+                      aria-pressed={!!res.bookmarked}
+                      aria-label={res.bookmarked ? `Remove ${res.title} from saved` : `Save ${res.title} for later`}
+                      className={`icon-btn ${res.bookmarked ? "!text-link" : ""}`}
+                    >
+                      <Bookmark size={17} fill={res.bookmarked ? "currentColor" : "none"} />
+                    </button>
+                    {canDelete(res) && (
+                      <button type="button" onClick={() => handleDelete(res)} aria-label={`Delete ${res.title}`} className="icon-btn is-danger">
+                        <Trash2 size={17} />
+                      </button>
+                    )}
+                    <button type="button" onClick={() => handleOpen(res)} aria-label={`Open ${res.title}`} className={`btn btn-sm ${isSel ? "btn-primary" : "btn-quiet"}`}>
+                      Open <ExternalLink size={13} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-full flex flex-col items-center justify-center py-20 px-4 text-center bg-zinc-950 border border-dashed border-zinc-900 rounded-3xl">
-              <div className="w-16 h-16 bg-zinc-900/30 rounded-full flex items-center justify-center mb-4 border border-zinc-800/80">
-                <FolderOpen size={28} className="text-zinc-600" />
-              </div>
-              <h3 className="text-base font-bold text-white mb-1">
-                No resources found
-              </h3>
-              <p className="text-zinc-500 text-xs max-w-xs mb-6">
-                {emptyMessage}
-              </p>
-              {!searchQuery && viewMode !== "saved" && (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-900/10"
-                >
-                  Upload Now
-                </button>
-              )}
-            </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="border-b border-line py-14">
+          <h2 className="text-2xl font-semibold">{empty.title}</h2>
+          <p className="mt-2 max-w-[48ch] text-muted">{empty.text}</p>
+          {!searchQuery && viewMode !== "saved" && (
+            <button type="button" onClick={() => setIsModalOpen(true)} className="btn btn-primary mt-5">
+              <Plus size={17} /> Upload resource
+            </button>
           )}
         </div>
-      </main>
+      )}
 
-      <UploadModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onUploadSuccess={handleUploadSuccess}
-        teams={allTeams}
-      />
-    </div>
+      <UploadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onUploadSuccess={handleUploadSuccess} teams={allTeams} />
+    </AppShell>
   );
 };
 

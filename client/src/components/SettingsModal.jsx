@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { X, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import API from "../api";
+import Modal from "./Modal";
 
 const strengthOf = (pw) => {
   let score = 0;
@@ -13,15 +14,10 @@ const strengthOf = (pw) => {
   return Math.min(score, 4);
 };
 const STRENGTH_LABELS = ["Too weak", "Weak", "Okay", "Good", "Strong"];
-const STRENGTH_COLORS = [
-  "bg-red-500",
-  "bg-red-500",
-  "bg-amber-500",
-  "bg-emerald-500",
-  "bg-emerald-400",
-];
+const STRENGTH_COLORS = ["var(--danger)", "var(--danger)", "var(--wait)", "var(--ok)", "var(--ok)"];
 
-const SettingsModal = ({ isOpen, onClose }) => {
+// Rendered only while open, so every opening starts with empty fields.
+const SettingsModal = ({ onClose }) => {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -29,52 +25,22 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const reset = () => {
-    setCurrent("");
-    setNext("");
-    setConfirm("");
-    setShow(false);
-    setError("");
-  };
-
-  const close = () => {
-    reset();
-    onClose();
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        reset();
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   const strength = strengthOf(next);
+  const type = show ? "text" : "password";
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
-    if (next.length < 8)
-      return setError("New password must be at least 8 characters.");
+    if (next.length < 8) return setError("New password must be at least 8 characters.");
     if (next !== confirm) return setError("New passwords don't match.");
 
     setSaving(true);
     try {
-      const { data } = await API.patch("/users/password", {
-        currentPassword: current,
-        newPassword: next,
-      });
+      const { data } = await API.patch("/users/password", { currentPassword: current, newPassword: next });
       // The server signs out every older session and returns a fresh token for this one.
       if (data?.token) localStorage.setItem("token", data.token);
       toast.success("Password updated");
-      close();
+      onClose();
     } catch (err) {
       setError(err.response?.data?.message || "Could not update password.");
     } finally {
@@ -82,113 +48,48 @@ const SettingsModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const inputClass =
-    "w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition";
-
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onMouseDown={(e) => e.target === e.currentTarget && close()}
-    >
-      <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Lock size={18} className="text-blue-500" /> Account Settings
-          </h2>
-          <button
-            onClick={close}
-            className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition"
-          >
-            <X size={18} />
-          </button>
+    <Modal title="Account settings" onClose={onClose} width="max-w-md">
+      <form onSubmit={submit} className="space-y-4" autoComplete="off">
+        <h3 className="text-lg font-semibold">Change password</h3>
+
+        <div>
+          <label htmlFor="cur" className="label">Current password</label>
+          <input id="cur" type={type} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required className="field" />
         </div>
 
-        <form onSubmit={submit} className="p-6 space-y-4" autoComplete="off">
-          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-            Change password
-          </p>
-
-          <input
-            type={show ? "text" : "password"}
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            placeholder="Current password"
-            autoComplete="current-password"
-            required
-            className={inputClass}
-          />
-
-          <div>
-            <div className="relative">
-              <input
-                type={show ? "text" : "password"}
-                value={next}
-                onChange={(e) => setNext(e.target.value)}
-                placeholder="New password (min 8 characters)"
-                autoComplete="new-password"
-                required
-                maxLength={72}
-                className={`${inputClass} pr-11`}
-              />
-              <button
-                type="button"
-                onClick={() => setShow((s) => !s)}
-                aria-label={show ? "Hide passwords" : "Show passwords"}
-                className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-300 transition"
-              >
-                {show ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {next && (
-              <div className="mt-2">
-                <div className="flex gap-1">
-                  {[0, 1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className={`h-1 flex-1 rounded-full transition-colors ${
-                        i < strength ? STRENGTH_COLORS[strength] : "bg-zinc-800"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-[11px] text-zinc-500 mt-1">
-                  {STRENGTH_LABELS[strength]}
-                </p>
-              </div>
-            )}
+        <div>
+          <label htmlFor="new" className="label">New password</label>
+          <div className="relative">
+            <input id="new" type={type} value={next} onChange={(e) => setNext(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" required maxLength={72} className="field pr-11" />
+            <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide passwords" : "Show passwords"} className="icon-btn absolute right-1 top-1/2 -translate-y-1/2">
+              {show ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
-
-          <input
-            type={show ? "text" : "password"}
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder="Confirm new password"
-            autoComplete="new-password"
-            required
-            maxLength={72}
-            className={inputClass}
-          />
-
-          {error && (
-            <p className="text-xs text-red-400 bg-red-400/10 p-3 rounded-lg border border-red-400/20">
-              {error}
-            </p>
+          {next && (
+            <div className="mt-2" aria-live="polite">
+              <div className="flex gap-1">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="h-1 flex-1 rounded-full transition-colors" style={{ background: i < strength ? STRENGTH_COLORS[strength] : "var(--line)" }} />
+                ))}
+              </div>
+              <p className="hint mt-1">{STRENGTH_LABELS[strength]}</p>
+            </div>
           )}
+        </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2"
-          >
-            {saving ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              "Update password"
-            )}
-          </button>
-        </form>
-      </div>
-    </div>
+        <div>
+          <label htmlFor="conf" className="label">Confirm new password</label>
+          <input id="conf" type={type} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required maxLength={72} className="field" />
+        </div>
+
+        {error && <p role="alert" className="notice-error">{error}</p>}
+
+        <button type="submit" disabled={saving} className="btn btn-primary w-full">
+          {saving ? <Loader2 size={18} className="animate-spin" /> : "Update password"}
+        </button>
+      </form>
+    </Modal>
   );
 };
 

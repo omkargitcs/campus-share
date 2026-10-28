@@ -1,16 +1,418 @@
 @import "tailwindcss";
 
+/*
+  Campus Share design tokens
+  Surfaces: deep ink navy + cool paper white. Buttons: cobalt. The highlighter
+  yellow is reserved for one thing only: the mark that swipes across a selection.
+*/
+
+@theme inline {
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunk: var(--sunk);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-cobalt: var(--cobalt);
+  --color-link: var(--link);
+  --color-rail: var(--rail);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --color-wait: var(--wait);
+}
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  background-color: #09090b;
-  /* Deep Zinc/Black */
-  color: #fafafa;
-  /* Off-white text */
+  --bg: #f1f4fa;
+  --surface: #ffffff;
+  --sunk: #e8edf7;
+  --fg: #0b1430;
+  --muted: #526080;
+  --line: #d3dae9;
+  --accent: #2f5bff;
+  --cobalt: #2f5bff;
+  --cobalt-hover: #2349d8;
+  --link: #1f46d6;
+  --rail: #0b1430;
+  --danger: #b3203f;
+  --ok: #17724d;
+  --wait: #a2500a;
+  --sp-notes: #2f5bff;
+  --sp-book: #1f9d6b;
+  --sp-pyq: #d9486a;
+  --sp-4: #7c4ff0;
+  --sp-5: #0e8f9c;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0a1022;
+  --surface: #0f1832;
+  --sunk: #141f40;
+  --fg: #e8edfa;
+  --muted: #9aa6c4;
+  --line: #243360;
+  --accent: #6b8cff;
+  --cobalt: #2f5bff;
+  --cobalt-hover: #4a70ff;
+  --link: #8aa6ff;
+  --rail: #060b1a;
+  --danger: #ff7a93;
+  --ok: #4cd09a;
+  --wait: #f2a35e;
+  --sp-notes: #4d74ff;
+  --sp-book: #34c28a;
+  --sp-pyq: #f0698a;
+  --sp-4: #a285ff;
+  --sp-5: #2cc4d2;
   color-scheme: dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
-  background-color: #09090b;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: #ffe24a;
+  color: #0b1430;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- controls ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-sm {
+  height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.btn-primary {
+  background: var(--cobalt);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--cobalt-hover);
+}
+
+.btn-quiet {
+  background: var(--surface);
+  color: var(--fg);
+  border-color: var(--line);
+}
+
+.btn-quiet:hover:not(:disabled) {
+  background: var(--sunk);
+  border-color: var(--muted);
+}
+
+.btn-danger {
+  background: var(--surface);
+  color: var(--danger);
+  border-color: var(--line);
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+.btn-ghost {
+  color: var(--muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--fg);
+  background: var(--sunk);
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.icon-btn:hover {
+  color: var(--fg);
+  background: var(--sunk);
+}
+
+.icon-btn.is-danger:hover {
+  color: var(--danger);
+}
+
+.field {
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.9375rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+textarea.field {
+  height: auto;
+  padding: 0.625rem 0.75rem;
+  resize: vertical;
+}
+
+.field::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.field:hover {
+  border-color: var(--muted);
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.notice-error {
+  padding: 0.625rem 0.75rem;
+  border-left: 3px solid var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--fg);
+  font-size: 0.875rem;
+}
+
+.tab {
+  padding: 0.625rem 0.125rem;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: var(--fg);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.chip:hover {
+  border-color: var(--muted);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.chip .count {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.chip[aria-pressed="true"] .count {
+  color: inherit;
+  opacity: 0.7;
+}
+
+/* ---------- catalogue rows + the highlighter ---------- */
+.row {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  transition: background-color 0.15s;
+}
+
+.row:hover:not([data-marked="true"]) {
+  background: color-mix(in srgb, var(--sunk) 60%, transparent);
+}
+
+.row>.spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 2;
+}
+
+.row>.content {
+  position: relative;
+  z-index: 1;
+}
+
+.mark {
+  position: absolute;
+  inset: 4px 0 4px 10px;
+  z-index: 0;
+  pointer-events: none;
+  transform-origin: left center;
+  transform: scaleX(0) skewX(-2deg);
+  background: linear-gradient(102deg,
+      rgba(255, 226, 74, 0) 0,
+      #ffe24a 1.4%,
+      #ffeb70 50%,
+      #ffe24a 98.4%,
+      rgba(255, 226, 74, 0) 100%);
+  border-radius: 3px 8px 5px 4px / 4px 5px 8px 3px;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.2, 1);
+}
+
+[data-marked="true"]>.mark {
+  transform: scaleX(1) skewX(-2deg);
+}
+
+/* Inside the mark every colour is re-pinned so text stays readable in both themes. */
+[data-marked="true"] {
+  --fg: #0b1430;
+  --muted: #3f4b72;
+  --line: rgba(11, 20, 48, 0.22);
+  --surface: #ffffff;
+  --sunk: #eef2fb;
+  --link: #1b3bb0;
+  --danger: #a31a38;
+  --wait: #8a4208;
+}
+
+[data-marked="true"] .icon-btn:hover {
+  background: rgba(11, 20, 48, 0.12);
+}
+
+.stretch::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.above {
+  position: relative;
+  z-index: 2;
+}
+
+/* ---------- motion ---------- */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.modal-in {
+  animation: modal-in 0.18s ease-out;
+}
+
+@keyframes pulse-line {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.skeleton {
+  background: var(--sunk);
+  border-radius: 4px;
+  animation: pulse-line 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .mark,
+  .modal-in,
+  .skeleton {
+    transition: none;
+    animation: none;
+  }
 }

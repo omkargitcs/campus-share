@@ -3,7 +3,9 @@ import { Bell, CheckCheck } from "lucide-react";
 import API from "../api";
 import { timeAgo } from "../utils/format";
 
-const NotificationBell = () => {
+// variant: "rail" = labelled row in the desktop sidebar (panel opens to its right)
+//          "top"  = icon button in the phone header (panel opens under the header)
+const NotificationBell = ({ variant = "rail" }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
@@ -15,11 +17,10 @@ const NotificationBell = () => {
       setItems(data.items);
       setUnread(data.unreadCount);
     } catch {
-      // silent: the bell is a nice-to-have, never block the page on it
+      // silent: notifications must never block the page
     }
   }, []);
 
-  // initial load + poll every minute + refresh when the tab regains focus
   useEffect(() => {
     const first = setTimeout(load, 0);
     const timer = setInterval(load, 60000);
@@ -31,12 +32,9 @@ const NotificationBell = () => {
     };
   }, [load]);
 
-  // close on outside click / Escape
   useEffect(() => {
     if (!open) return;
-    const onDown = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
+    const onDown = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -48,9 +46,7 @@ const NotificationBell = () => {
 
   const markOne = async (n) => {
     if (n.isRead) return;
-    setItems((prev) =>
-      prev.map((i) => (i.id === n.id ? { ...i, isRead: true } : i)),
-    );
+    setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, isRead: true } : i)));
     setUnread((c) => Math.max(0, c - 1));
     try {
       await API.patch(`/notifications/${n.id}/read`);
@@ -69,69 +65,72 @@ const NotificationBell = () => {
     }
   };
 
+  const toggle = () => {
+    setOpen((o) => !o);
+    if (!open) load();
+  };
+  const label = `Notifications${unread ? `, ${unread} unread` : ""}`;
+  const badge =
+    unread > 0 ? (
+      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ffe24a] px-1.5 text-[11px] font-bold text-[#0b1430]">
+        {unread > 9 ? "9+" : unread}
+      </span>
+    ) : null;
+
+  const panelPos =
+    variant === "rail"
+      ? "absolute bottom-0 left-full ml-3 w-[22rem]"
+      : "fixed left-3 right-3 top-[calc(3.5rem+env(safe-area-inset-top))]";
+
   return (
     <div className="relative" ref={ref}>
-      <button
-        onClick={() => {
-          setOpen((o) => !o);
-          if (!open) load();
-        }}
-        aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
-        className="relative p-2 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-xl border border-transparent hover:border-zinc-800 transition focus:outline-none"
-      >
-        <Bell size={18} />
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </button>
+      {variant === "rail" ? (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={label}
+          aria-expanded={open}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-white/75 transition hover:bg-white/10 hover:text-white"
+        >
+          <Bell size={18} />
+          <span className="flex-1 text-left">Notifications</span>
+          {badge}
+        </button>
+      ) : (
+        <button type="button" onClick={toggle} aria-label={label} aria-expanded={open} className="icon-btn relative !text-white/80 hover:!bg-white/10 hover:!text-white">
+          <Bell size={18} />
+          {unread > 0 && <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#ffe24a] ring-2 ring-rail" />}
+        </button>
+      )}
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl z-30 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-900">
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
-              Notifications
-            </p>
+        <div className={`modal-in z-50 overflow-hidden rounded-lg border border-line bg-surface text-fg shadow-2xl ${panelPos}`}>
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <h2 className="text-base font-semibold">Notifications</h2>
             {unread > 0 && (
-              <button
-                onClick={markAll}
-                className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition"
-              >
-                <CheckCheck size={12} /> Mark all read
+              <button type="button" onClick={markAll} className="flex items-center gap-1.5 text-sm font-medium text-link hover:underline">
+                <CheckCheck size={14} /> Mark all read
               </button>
             )}
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-[min(24rem,60dvh)] overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-zinc-600">
-                You're all caught up.
-              </p>
+              <p className="px-4 py-10 text-center text-sm text-muted">You're all caught up.</p>
             ) : (
-              items.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => markOne(n)}
-                  className={`w-full text-left px-4 py-3 border-b border-zinc-900/60 last:border-0 hover:bg-zinc-900/60 transition flex gap-3 ${
-                    n.isRead ? "opacity-60" : ""
-                  }`}
-                >
-                  <span
-                    className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${
-                      n.isRead ? "bg-transparent" : "bg-blue-500"
-                    }`}
-                  />
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm text-zinc-200 leading-snug">
-                      {n.message}
-                    </span>
-                    <span className="block text-[11px] text-zinc-600 mt-1">
-                      {timeAgo(n.createdAt)}
-                    </span>
-                  </span>
-                </button>
-              ))
+              <ul>
+                {items.map((n) => (
+                  <li key={n.id} className="border-b border-line last:border-0">
+                    <button type="button" onClick={() => markOne(n)} className="flex w-full gap-3 px-4 py-3 text-left transition hover:bg-sunk">
+                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.isRead ? "bg-transparent ring-1 ring-line" : "bg-accent"}`} />
+                      <span className={`min-w-0 flex-1 ${n.isRead ? "text-muted" : ""}`}>
+                        <span className="block text-sm leading-snug">{n.message}</span>
+                        <span className="mt-1 block text-xs text-muted">{timeAgo(n.createdAt)}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>

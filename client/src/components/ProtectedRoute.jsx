@@ -35,8 +35,8 @@ const ProtectedRoute = ({ roles, children }) => {
   if (roles) {
     if (!state.verified) {
       return (
-        <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-          <Loader2 className="animate-spin text-blue-500" size={32} />
+        <div className="flex min-h-dvh items-center justify-center bg-bg">
+          <Loader2 className="animate-spin text-accent" size={32} />
         </div>
       );
     }
