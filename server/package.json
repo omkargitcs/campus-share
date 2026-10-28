@@ -15,7 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1090.0",
     "@aws-sdk/s3-request-presigner": "^3.1090.0",
-    "@prisma/client": "^6.19.2",
+    "@prisma/client": "6.19.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
@@ -26,6 +26,6 @@
     "multer": "^2.1.1"
   },
   "devDependencies": {
-    "prisma": "^6.19.2"
+    "prisma": "6.19.2"
   }
 }
