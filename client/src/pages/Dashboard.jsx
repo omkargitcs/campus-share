@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { UserContext } from "../utils/UserContext";
 import {
   Trash2,
   ExternalLink,
@@ -30,29 +31,42 @@ const CategoryPlaceholder = ({ category }) => {
 
   let icon = <FileText size={40} className="text-blue-400/60" />;
   let gradient = "from-blue-950/40 via-zinc-900 to-zinc-950";
-  let pattern = "bg-[radial-gradient(#1e3a8a_1px,transparent_1px)] [background-size:16px_16px]";
+  let pattern =
+    "bg-[radial-gradient(#1e3a8a_1px,transparent_1px)] [background-size:16px_16px]";
 
   if (normalized === "book") {
     icon = <BookOpen size={40} className="text-emerald-400/60" />;
     gradient = "from-emerald-950/40 via-zinc-900 to-zinc-950";
-    pattern = "bg-[radial-gradient(#064e3b_1px,transparent_1px)] [background-size:16px_16px]";
+    pattern =
+      "bg-[radial-gradient(#064e3b_1px,transparent_1px)] [background-size:16px_16px]";
   } else if (normalized === "pyq") {
     icon = <HelpCircle size={40} className="text-purple-400/60" />;
     gradient = "from-purple-950/40 via-zinc-900 to-zinc-950";
-    pattern = "bg-[radial-gradient(#581c87_1px,transparent_1px)] [background-size:16px_16px]";
+    pattern =
+      "bg-[radial-gradient(#581c87_1px,transparent_1px)] [background-size:16px_16px]";
   }
 
   return (
-    <div className={`w-full h-full bg-gradient-to-b ${gradient} relative flex items-center justify-center overflow-hidden`}>
+    <div
+      className={`w-full h-full bg-gradient-to-b ${gradient} relative flex items-center justify-center overflow-hidden`}
+    >
       <div className={`absolute inset-0 opacity-20 ${pattern}`} />
-      <div className="relative transform group-hover:scale-110 transition-transform duration-300">{icon}</div>
+      <div className="relative transform group-hover:scale-110 transition-transform duration-300">
+        {icon}
+      </div>
     </div>
   );
 };
 
 const SORTS = {
-  new: { label: "Newest", fn: (a, b) => new Date(b.createdAt) - new Date(a.createdAt) },
-  popular: { label: "Most opened", fn: (a, b) => (b.downloads || 0) - (a.downloads || 0) },
+  new: {
+    label: "Newest",
+    fn: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+  },
+  popular: {
+    label: "Most opened",
+    fn: (a, b) => (b.downloads || 0) - (a.downloads || 0),
+  },
   az: { label: "A to Z", fn: (a, b) => a.title.localeCompare(b.title) },
 };
 
@@ -97,17 +111,25 @@ const Dashboard = () => {
     fetchTeams();
   }, [fetchResources, fetchTeams]);
 
-  const taughtIds = useMemo(() => new Set(teams.teaching.map((t) => t.id)), [teams]);
+  const taughtIds = useMemo(
+    () => new Set(teams.teaching.map((t) => t.id)),
+    [teams],
+  );
   const allTeams = useMemo(() => {
     const map = new Map();
-    [...teams.teaching, ...teams.joined].forEach((t) => map.set(t.id, { id: t.id, name: t.name }));
+    [...teams.teaching, ...teams.joined].forEach((t) =>
+      map.set(t.id, { id: t.id, name: t.name }),
+    );
     return [...map.values()];
   }, [teams]);
 
-  const canDelete = (res) => res.ownerId === currentUserId || isAdmin || taughtIds.has(res.teamId);
+  const canDelete = (res) =>
+    res.ownerId === currentUserId || isAdmin || taughtIds.has(res.teamId);
 
   const pendingForReview = useMemo(
-    () => resources.filter((r) => r.status === "PENDING" && taughtIds.has(r.teamId)).length,
+    () =>
+      resources.filter((r) => r.status === "PENDING" && taughtIds.has(r.teamId))
+        .length,
     [resources, taughtIds],
   );
 
@@ -148,33 +170,51 @@ const Dashboard = () => {
           res.title?.toLowerCase().includes(q) ||
           res.description?.toLowerCase().includes(q) ||
           res.ownerName?.toLowerCase().includes(q);
-        const matchesCategory = selectedCategory === "All" || res.category === selectedCategory;
+        const matchesCategory =
+          selectedCategory === "All" || res.category === selectedCategory;
         const matchesView =
           viewMode === "all" ||
           (viewMode === "mine" && res.ownerId === currentUserId) ||
           (viewMode === "saved" && res.bookmarked);
         const matchesSource =
-          source === "all" || (source === "public" ? !res.teamId : res.teamId === source);
+          source === "all" ||
+          (source === "public" ? !res.teamId : res.teamId === source);
         return matchesSearch && matchesCategory && matchesView && matchesSource;
       })
       .sort(SORTS[sortKey].fn);
-  }, [resources, searchQuery, selectedCategory, viewMode, source, sortKey, currentUserId]);
+  }, [
+    resources,
+    searchQuery,
+    selectedCategory,
+    viewMode,
+    source,
+    sortKey,
+    currentUserId,
+  ]);
 
   const handleOpen = async (res) => {
     try {
       const data = await openResource(res.id);
       setResources((prev) =>
-        prev.map((r) => (r.id === res.id ? { ...r, downloads: data.downloads ?? r.downloads } : r)),
+        prev.map((r) =>
+          r.id === res.id
+            ? { ...r, downloads: data.downloads ?? r.downloads }
+            : r,
+        ),
       );
     } catch (err) {
-      toast.error(err.response?.data?.message || "Could not open this resource.");
+      toast.error(
+        err.response?.data?.message || "Could not open this resource.",
+      );
     }
   };
 
   const toggleBookmark = async (res) => {
     const next = !res.bookmarked;
     const apply = (value) =>
-      setResources((prev) => prev.map((r) => (r.id === res.id ? { ...r, bookmarked: value } : r)));
+      setResources((prev) =>
+        prev.map((r) => (r.id === res.id ? { ...r, bookmarked: value } : r)),
+      );
     apply(next); // optimistic
     try {
       if (next) await API.put(`/resources/${res.id}/bookmark`);
@@ -199,7 +239,9 @@ const Dashboard = () => {
 
   const tabClass = (active) =>
     `flex-1 sm:flex-none px-4 sm:px-5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
-      active ? "bg-zinc-900 text-white shadow-inner border border-zinc-800" : "text-zinc-500 hover:text-zinc-300"
+      active
+        ? "bg-zinc-900 text-white shadow-inner border border-zinc-800"
+        : "text-zinc-500 hover:text-zinc-300"
     }`;
   const selectClass =
     "bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 outline-none focus:border-blue-500 transition cursor-pointer";
@@ -228,7 +270,8 @@ const Dashboard = () => {
           >
             <span className="flex items-center gap-2 text-sm font-semibold">
               <GraduationCap size={16} />
-              {pendingForReview} upload{pendingForReview === 1 ? "" : "s"} waiting for your review
+              {pendingForReview} upload{pendingForReview === 1 ? "" : "s"}{" "}
+              waiting for your review
             </span>
             <span className="text-xs font-bold">Review →</span>
           </Link>
@@ -247,7 +290,9 @@ const Dashboard = () => {
               <p className="text-zinc-500 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider sm:tracking-widest mb-0.5 sm:mb-1 truncate">
                 {label}
               </p>
-              <p className={`text-xl sm:text-3xl font-black ${color}`}>{value}</p>
+              <p className={`text-xl sm:text-3xl font-black ${color}`}>
+                {value}
+              </p>
             </div>
           ))}
         </div>
@@ -255,13 +300,22 @@ const Dashboard = () => {
         <div className="space-y-4 mb-6 sm:mb-8">
           <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
             <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-900 w-full lg:w-auto justify-center">
-              <button onClick={() => setViewMode("all")} className={tabClass(viewMode === "all")}>
+              <button
+                onClick={() => setViewMode("all")}
+                className={tabClass(viewMode === "all")}
+              >
                 All Resources
               </button>
-              <button onClick={() => setViewMode("mine")} className={tabClass(viewMode === "mine")}>
+              <button
+                onClick={() => setViewMode("mine")}
+                className={tabClass(viewMode === "mine")}
+              >
                 My Uploads
               </button>
-              <button onClick={() => setViewMode("saved")} className={tabClass(viewMode === "saved")}>
+              <button
+                onClick={() => setViewMode("saved")}
+                className={tabClass(viewMode === "saved")}
+              >
                 Saved
               </button>
             </div>
@@ -282,7 +336,10 @@ const Dashboard = () => {
                 ))}
               </select>
               <div className="relative flex-1 lg:flex-none">
-                <ArrowUpDown size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                <ArrowUpDown
+                  size={12}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+                />
                 <select
                   value={sortKey}
                   onChange={(e) => setSortKey(e.target.value)}
@@ -311,7 +368,9 @@ const Dashboard = () => {
                 }`}
               >
                 {cat}
-                <span className={`text-[10px] ${selectedCategory === cat ? "text-blue-200" : "text-zinc-600"}`}>
+                <span
+                  className={`text-[10px] ${selectedCategory === cat ? "text-blue-200" : "text-zinc-600"}`}
+                >
                   {categoryCounts[cat] || 0}
                 </span>
               </button>
@@ -352,14 +411,21 @@ const Dashboard = () => {
                     <div className="absolute top-3 right-3 flex gap-1.5">
                       <button
                         onClick={() => toggleBookmark(res)}
-                        aria-label={res.bookmarked ? "Remove from saved" : "Save for later"}
+                        aria-label={
+                          res.bookmarked
+                            ? "Remove from saved"
+                            : "Save for later"
+                        }
                         className={`p-2 border rounded-xl transition-all backdrop-blur-md active:scale-90 ${
                           res.bookmarked
                             ? "bg-blue-600/90 border-blue-400/40 text-white"
                             : "bg-black/40 border-white/5 text-zinc-200 hover:bg-blue-600/80 md:opacity-0 md:group-hover:opacity-100"
                         }`}
                       >
-                        <Bookmark size={14} fill={res.bookmarked ? "currentColor" : "none"} />
+                        <Bookmark
+                          size={14}
+                          fill={res.bookmarked ? "currentColor" : "none"}
+                        />
                       </button>
                       {canDelete(res) && (
                         <button
@@ -389,14 +455,16 @@ const Dashboard = () => {
                       )}
                     </p>
                     <p className="text-zinc-500 text-xs line-clamp-2 mt-2 min-h-[2rem]">
-                      {res.description || "No description provided for this campus resource."}
+                      {res.description ||
+                        "No description provided for this campus resource."}
                     </p>
                   </div>
                 </div>
 
                 <div className="p-4 pt-0 mt-2 flex items-center justify-between text-[11px] text-zinc-400 border-t border-zinc-900/50">
                   <span className="flex items-center gap-1 mt-3 select-none">
-                    <Download size={12} className="text-zinc-500" /> {res.downloads || 0} opens
+                    <Download size={12} className="text-zinc-500" />{" "}
+                    {res.downloads || 0} opens
                   </span>
                   <button
                     onClick={() => handleOpen(res)}
@@ -412,8 +480,12 @@ const Dashboard = () => {
               <div className="w-16 h-16 bg-zinc-900/30 rounded-full flex items-center justify-center mb-4 border border-zinc-800/80">
                 <FolderOpen size={28} className="text-zinc-600" />
               </div>
-              <h3 className="text-base font-bold text-white mb-1">No resources found</h3>
-              <p className="text-zinc-500 text-xs max-w-xs mb-6">{emptyMessage}</p>
+              <h3 className="text-base font-bold text-white mb-1">
+                No resources found
+              </h3>
+              <p className="text-zinc-500 text-xs max-w-xs mb-6">
+                {emptyMessage}
+              </p>
               {!searchQuery && viewMode !== "saved" && (
                 <button
                   onClick={() => setIsModalOpen(true)}
