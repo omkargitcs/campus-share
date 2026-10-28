@@ -1,12 +1,14 @@
 const multer = require("multer");
 
-// Configure storage in memory so buffers can be easily forwarded to AWS S3
-const storage = multer.memoryStorage();
-
+// Memory storage so the buffer can be checked and forwarded to S3.
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB file limit
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 }, // 10MB, one file
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== "application/pdf") {
+      return cb(Object.assign(new Error("Only PDF files are allowed"), { status: 400, expose: true }));
+    }
+    cb(null, true);
   },
 });
 

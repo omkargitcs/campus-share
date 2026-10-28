@@ -1,11 +1,17 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
+import { UserPlus, Mail, Lock, Loader2, GraduationCap } from "lucide-react";
+import { toast } from "sonner";
 import API from "../api";
 import CampusShareLogo from "../components/CampusShareLogo"; // Make sure this exists!
 
 const Register = () => {
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    teacherCode: "",
+  });
+  const [isTeacher, setIsTeacher] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -16,9 +22,16 @@ const Register = () => {
     setError("");
 
     try {
-      await API.post("/auth/register", formData);
-      alert("Account created successfully! Redirecting to login...");
-      navigate("/login");
+      const payload = {
+        email: formData.email.trim(),
+        password: formData.password,
+      };
+      if (isTeacher && formData.teacherCode.trim()) {
+        payload.teacherCode = formData.teacherCode.trim();
+      }
+      await API.post("/auth/register", payload);
+      toast.success("Account created! Please log in.");
+      navigate("/login", { replace: true });
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -89,12 +102,37 @@ const Register = () => {
                 type="password"
                 required
                 className="w-full bg-[#09090b] text-zinc-100 pl-10 pr-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-zinc-700"
-                placeholder="••••••••"
+                placeholder="At least 8 characters"
+                minLength={8}
+                maxLength={72}
+                autoComplete="new-password"
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
               />
             </div>
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsTeacher((v) => !v)}
+              className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors ml-1"
+            >
+              <GraduationCap size={14} />
+              {isTeacher ? "I'm a student" : "I'm a teacher"}
+            </button>
+            {isTeacher && (
+              <input
+                type="password"
+                autoComplete="off"
+                className="mt-3 w-full bg-[#09090b] text-zinc-100 px-4 py-3 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-zinc-700"
+                placeholder="Teacher access code"
+                onChange={(e) =>
+                  setFormData({ ...formData, teacherCode: e.target.value })
+                }
+              />
+            )}
           </div>
 
           <button

@@ -7,28 +7,86 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum ResourceStatus {
+  PENDING
+  APPROVED
+  FLAGGED
+}
+
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  password      String
-  role          Role           @default(STUDENT)
-  resources     Resource[]
-  notifications Notification[]
-  createdAt     DateTime       @default(now())
+  id                String         @id @default(uuid())
+  email             String         @unique
+  password          String
+  role              Role           @default(STUDENT)
+  // Tokens issued before this moment are rejected (set when the password changes)
+  passwordChangedAt DateTime?
+  resources         Resource[]
+  notifications     Notification[]
+  bookmarks         Bookmark[]
+  teamsTeaching     Team[]         @relation("TeacherTeams")
+  memberships       TeamMember[]
+  createdAt         DateTime       @default(now())
+}
+
+model Team {
+  id          String       @id @default(uuid())
+  name        String
+  inviteCode  String       @unique
+  teacherId   String
+  teacher     User         @relation("TeacherTeams", fields: [teacherId], references: [id])
+  memberships TeamMember[]
+  resources   Resource[]
+  createdAt   DateTime     @default(now())
+
+  @@index([teacherId])
+}
+
+model TeamMember {
+  teamId   String
+  userId   String
+  joinedAt DateTime @default(now())
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
 }
 
 model Resource {
-  id          String   @id @default(uuid())
+  id          String         @id @default(uuid())
   title       String
   description String?
-  category    String?   
-  fileUrl     String?  
-  price       Float    @default(0)
-  views       Int      @default(0)    
-  downloads   Int      @default(0)    
+  category    String?
+  fileUrl     String?
+  price       Float          @default(0)
+  views       Int            @default(0)
+  downloads   Int            @default(0)
   ownerId     String
-  owner       User     @relation(fields: [ownerId], references: [id])
-  createdAt   DateTime @default(now())
+  owner       User           @relation(fields: [ownerId], references: [id])
+  teamId      String?
+  team        Team?          @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  status      ResourceStatus @default(APPROVED)
+  bookmarks   Bookmark[]
+  createdAt   DateTime       @default(now())
+
+  @@index([teamId])
+  @@index([ownerId])
+}
+
+model Bookmark {
+  userId     String
+  resourceId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([userId, resourceId])
 }
 
 model Notification {
@@ -36,11 +94,8 @@ model Notification {
   message   String
   isRead    Boolean  @default(false)
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-}
 
-enum Role {
-  STUDENT
-  ADMIN
+  @@index([userId, isRead])
 }

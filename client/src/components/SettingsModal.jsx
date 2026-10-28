@@ -13,7 +13,13 @@ const strengthOf = (pw) => {
   return Math.min(score, 4);
 };
 const STRENGTH_LABELS = ["Too weak", "Weak", "Okay", "Good", "Strong"];
-const STRENGTH_COLORS = ["bg-red-500", "bg-red-500", "bg-amber-500", "bg-emerald-500", "bg-emerald-400"];
+const STRENGTH_COLORS = [
+  "bg-red-500",
+  "bg-red-500",
+  "bg-amber-500",
+  "bg-emerald-500",
+  "bg-emerald-400",
+];
 
 const SettingsModal = ({ isOpen, onClose }) => {
   const [current, setCurrent] = useState("");
@@ -55,12 +61,18 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
-    if (next.length < 8) return setError("New password must be at least 8 characters.");
+    if (next.length < 8)
+      return setError("New password must be at least 8 characters.");
     if (next !== confirm) return setError("New passwords don't match.");
 
     setSaving(true);
     try {
-      await API.patch("/users/password", { currentPassword: current, newPassword: next });
+      const { data } = await API.patch("/users/password", {
+        currentPassword: current,
+        newPassword: next,
+      });
+      // The server signs out every older session and returns a fresh token for this one.
+      if (data?.token) localStorage.setItem("token", data.token);
       toast.success("Password updated");
       close();
     } catch (err) {
@@ -83,13 +95,18 @@ const SettingsModal = ({ isOpen, onClose }) => {
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Lock size={18} className="text-blue-500" /> Account Settings
           </h2>
-          <button onClick={close} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition">
+          <button
+            onClick={close}
+            className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition"
+          >
             <X size={18} />
           </button>
         </div>
 
         <form onSubmit={submit} className="p-6 space-y-4" autoComplete="off">
-          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Change password</p>
+          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+            Change password
+          </p>
 
           <input
             type={show ? "text" : "password"}
@@ -134,7 +151,9 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     />
                   ))}
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-1">{STRENGTH_LABELS[strength]}</p>
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  {STRENGTH_LABELS[strength]}
+                </p>
               </div>
             )}
           </div>
@@ -161,7 +180,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
             disabled={saving}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2"
           >
-            {saving ? <Loader2 size={18} className="animate-spin" /> : "Update password"}
+            {saving ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              "Update password"
+            )}
           </button>
         </form>
       </div>

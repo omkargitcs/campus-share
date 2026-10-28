@@ -20,16 +20,16 @@
 
 ## ✨ Features
 
-| | |
-|---|---|
-| 📚 **Resource library** | Upload and browse **Notes**, **Books** and **PYQs** as PDFs, with instant search, category filters and sorting (newest, most opened, A to Z). |
-| 👥 **Class teams** | Teachers create a team per class and share an invite code. Students join with it and share notes privately with that class. |
-| ✅ **Teacher moderation** | Team uploads wait in a review queue. Teachers approve, flag or remove them, and uploaders get notified. |
-| 🔔 **Notifications** | A live bell for approvals, flags, new uploads awaiting review and new team members. |
-| 🔖 **Save for later** | Bookmark any resource and revisit it from the **Saved** tab. |
-| 🔐 **Private by default** | Files are opened through short-lived signed links after a permission check, so nobody can reach a team's PDFs by guessing a URL. |
-| ⚡ **Polished UX** | Dark glassmorphism UI, upload progress bar, drag and drop, `/` to focus search, password-strength meter, skeleton loaders and toasts. |
-| 📱 **Responsive** | Designed for phones, tablets and desktops. |
+|                           |                                                                                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 📚 **Resource library**   | Upload and browse **Notes**, **Books** and **PYQs** as PDFs, with instant search, category filters and sorting (newest, most opened, A to Z). |
+| 👥 **Class teams**        | Teachers create a team per class and share an invite code. Students join with it and share notes privately with that class.                   |
+| ✅ **Teacher moderation** | Team uploads wait in a review queue. Teachers approve, flag or remove them, and uploaders get notified.                                       |
+| 🔔 **Notifications**      | A live bell for approvals, flags, new uploads awaiting review and new team members.                                                           |
+| 🔖 **Save for later**     | Bookmark any resource and revisit it from the **Saved** tab.                                                                                  |
+| 🔐 **Private by default** | Files are opened through short-lived signed links after a permission check, so nobody can reach a team's PDFs by guessing a URL.              |
+| ⚡ **Polished UX**        | Dark glassmorphism UI, upload progress bar, drag and drop, `/` to focus search, password-strength meter, skeleton loaders and toasts.         |
+| 📱 **Responsive**         | Designed for phones, tablets and desktops.                                                                                                    |
 
 <details>
 <summary><b>🧭 What each role sees</b></summary>
@@ -102,24 +102,25 @@ cd campus-share
 cd server
 npm install
 cp .env.example .env          # fill in the values below
-npx prisma migrate dev        # creates the tables
+npx prisma db push            # creates / updates the tables
 npm run dev                   # http://localhost:5000
 ```
 
 <details>
 <summary><b>🔧 Backend environment variables</b></summary>
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `JWT_SECRET` | ✅ | Long random string (32+ chars). The server refuses to start without it. |
-| `CLIENT_ORIGIN` | ✅ in prod | Frontend URL(s), comma-separated. Anything else is blocked by CORS. |
-| `AWS_ACCESS_KEY_ID` | ✅ | IAM access key |
-| `AWS_SECRET_ACCESS_KEY` | ✅ | IAM secret |
-| `AWS_REGION` | ✅ | e.g. `ap-south-1` |
-| `AWS_BUCKET_NAME` | ✅ | Bucket that stores the PDFs |
-| `ALLOWED_EMAIL_DOMAINS` | optional | e.g. `mithibai.ac.in` to restrict sign-up to your college |
-| `PORT` | optional | Defaults to `5000` |
+| Variable                | Required   | Description                                                                                                                                        |
+| ----------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | ✅         | PostgreSQL connection string                                                                                                                       |
+| `JWT_SECRET`            | ✅         | Long random string (32+ chars). The server refuses to start without it.                                                                            |
+| `CLIENT_ORIGIN`         | ✅ in prod | Frontend URL(s), comma-separated, no trailing slash. Other origins are blocked by CORS. If unset, the server logs a warning and allows any origin. |
+| `AWS_ACCESS_KEY_ID`     | ✅         | IAM access key                                                                                                                                     |
+| `AWS_SECRET_ACCESS_KEY` | ✅         | IAM secret                                                                                                                                         |
+| `AWS_REGION`            | ✅         | e.g. `ap-south-1`                                                                                                                                  |
+| `AWS_BUCKET_NAME`       | ✅         | Bucket that stores the PDFs                                                                                                                        |
+| `ALLOWED_EMAIL_DOMAINS` | optional   | e.g. `mithibai.ac.in` to restrict sign-up to your college                                                                                          |
+| `TEACHER_INVITE_CODE`   | optional   | Secret code a teacher types on the sign-up page to get a Teacher account. Leave empty to disable (then use `npm run set-role`).                    |
+| `PORT`                  | optional   | Defaults to `5000`                                                                                                                                 |
 
 Generate a secret:
 
@@ -140,7 +141,7 @@ npm run dev                   # http://localhost:5173
 
 ### 4. Create your first teacher and admin
 
-Everyone registers as a **Student**. Promote accounts from the `server` folder:
+Everyone registers as a **Student** (unless they enter the optional `TEACHER_INVITE_CODE`). Promote accounts from the `server` folder (set `DATABASE_URL` to your database first; for a hosted DB use its _External_ URL):
 
 ```bash
 npm run set-role -- teacher@college.edu TEACHER
@@ -153,18 +154,18 @@ After that, admins can also change roles through the API (`PATCH /api/users/:id/
 
 ## 🔑 Roles & Permissions
 
-| Action | Student | Teacher | Admin |
-|---|:---:|:---:|:---:|
-| Browse public resources | ✅ | ✅ | ✅ |
-| Upload publicly | ✅ | ✅ | ✅ |
-| Join a team with invite code | ✅ | ✅ | ✅ |
-| Upload to a team they belong to | ✅ (needs approval) | ✅ (auto-approved) | ✅ |
-| View team resources | members only | own teams | all |
-| Create a team | ❌ | ✅ | ✅ |
-| Approve / flag team uploads | ❌ | own teams | all |
-| Remove members, regenerate invite code | ❌ | own teams | ❌ |
-| Delete a resource | own uploads | own uploads + own team's | all |
-| Change user roles | ❌ | ❌ | ✅ |
+| Action                                 |       Student       |         Teacher          | Admin |
+| -------------------------------------- | :-----------------: | :----------------------: | :---: |
+| Browse public resources                |         ✅          |            ✅            |  ✅   |
+| Upload publicly                        |         ✅          |            ✅            |  ✅   |
+| Join a team with invite code           |         ✅          |            ✅            |  ✅   |
+| Upload to a team they belong to        | ✅ (needs approval) |    ✅ (auto-approved)    |  ✅   |
+| View team resources                    |    members only     |        own teams         |  all  |
+| Create a team                          |         ❌          |            ✅            |  ✅   |
+| Approve / flag team uploads            |         ❌          |        own teams         |  all  |
+| Remove members, regenerate invite code |         ❌          |        own teams         |  ❌   |
+| Delete a resource                      |     own uploads     | own uploads + own team's |  all  |
+| Change user roles                      |         ❌          |            ❌            |  ✅   |
 
 > Permissions are enforced **on the server**. The UI only hides buttons for convenience.
 
@@ -177,48 +178,48 @@ All routes are under `/api` and require `Authorization: Bearer <token>` except r
 <details>
 <summary><b>Auth and users</b></summary>
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| POST | `/auth/register` | public | Create an account (always a Student) |
-| POST | `/auth/login` | public | Returns a JWT and the user |
-| GET | `/users/profile` | user | Own profile and uploads |
-| PATCH | `/users/password` | user | Change password |
-| GET | `/users?q=` | admin | Search users |
-| PATCH | `/users/:id/role` | admin | Set a user's role |
+| Method | Endpoint          | Access | Purpose                                                       |
+| ------ | ----------------- | ------ | ------------------------------------------------------------- |
+| POST   | `/auth/register`  | public | Create an account (Student, or Teacher with the teacher code) |
+| POST   | `/auth/login`     | public | Returns a JWT and the user                                    |
+| GET    | `/users/profile`  | user   | Own profile and uploads                                       |
+| PATCH  | `/users/password` | user   | Change password (signs out all other sessions)                |
+| GET    | `/users?q=`       | admin  | Search users                                                  |
+| PATCH  | `/users/:id/role` | admin  | Set a user's role                                             |
 
 </details>
 
 <details>
 <summary><b>Resources</b></summary>
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/resources` | user | Resources the caller is allowed to see |
-| POST | `/resources/upload` | user | Upload a PDF (`multipart/form-data`, optional `teamId`) |
-| GET | `/resources/:id/access` | user | Permission-checked signed link to the PDF |
-| PUT / DELETE | `/resources/:id/bookmark` | user | Save or unsave |
-| PATCH | `/resources/:id/status` | team teacher, admin | `APPROVED` or `FLAGGED` |
-| DELETE | `/resources/:id` | owner, team teacher, admin | Delete |
+| Method       | Endpoint                  | Access                     | Purpose                                                 |
+| ------------ | ------------------------- | -------------------------- | ------------------------------------------------------- |
+| GET          | `/resources`              | user                       | Resources the caller is allowed to see                  |
+| POST         | `/resources/upload`       | user                       | Upload a PDF (`multipart/form-data`, optional `teamId`) |
+| GET          | `/resources/:id/access`   | user                       | Permission-checked signed link to the PDF               |
+| PUT / DELETE | `/resources/:id/bookmark` | user                       | Save or unsave                                          |
+| PATCH        | `/resources/:id/status`   | team teacher, admin        | `APPROVED` or `FLAGGED`                                 |
+| DELETE       | `/resources/:id`          | owner, team teacher, admin | Delete                                                  |
 
 </details>
 
 <details>
 <summary><b>Teams and notifications</b></summary>
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| POST | `/teams` | teacher, admin | Create a team |
-| POST | `/teams/join` | user | Join with an invite code |
-| GET | `/teams/mine` | user | Teams you teach and teams you joined |
-| DELETE | `/teams/:teamId/leave` | member | Leave a team |
-| GET | `/teams/:teamId/resources` | team teacher | All uploads in the team |
-| GET | `/teams/:teamId/members` | team teacher | Member list |
-| DELETE | `/teams/:teamId/members/:userId` | team teacher | Remove a member |
-| POST | `/teams/:teamId/invite` | team teacher | Generate a new invite code |
-| GET | `/notifications` | user | Latest notifications and unread count |
-| PATCH | `/notifications/:id/read` | user | Mark one as read |
-| PATCH | `/notifications/read-all` | user | Mark all as read |
-| GET | `/health` | public | Health check |
+| Method | Endpoint                         | Access         | Purpose                               |
+| ------ | -------------------------------- | -------------- | ------------------------------------- |
+| POST   | `/teams`                         | teacher, admin | Create a team                         |
+| POST   | `/teams/join`                    | user           | Join with an invite code              |
+| GET    | `/teams/mine`                    | user           | Teams you teach and teams you joined  |
+| DELETE | `/teams/:teamId/leave`           | member         | Leave a team                          |
+| GET    | `/teams/:teamId/resources`       | team teacher   | All uploads in the team               |
+| GET    | `/teams/:teamId/members`         | team teacher   | Member list                           |
+| DELETE | `/teams/:teamId/members/:userId` | team teacher   | Remove a member                       |
+| POST   | `/teams/:teamId/invite`          | team teacher   | Generate a new invite code            |
+| GET    | `/notifications`                 | user           | Latest notifications and unread count |
+| PATCH  | `/notifications/:id/read`        | user           | Mark one as read                      |
+| PATCH  | `/notifications/read-all`        | user           | Mark all as read                      |
+| GET    | `/health`                        | public         | Health check                          |
 
 </details>
 
@@ -238,7 +239,7 @@ All routes are under `/api` and require `Authorization: Bearer <token>` except r
 <summary><b>Known limitations</b></summary>
 
 - The JWT is kept in `localStorage`, which is standard for SPAs but exposed if the site ever has an XSS bug.
-- Tokens stay valid for up to 24 hours after a password change.
+- Tokens expire after 24 hours; changing your password signs out every other session immediately.
 - There is no password-reset email flow yet.
 
 </details>
@@ -247,12 +248,12 @@ All routes are under `/api` and require `Authorization: Bearer <token>` except r
 
 ## ☁️ Deployment
 
-| Part | Suggested host | Notes |
-|---|---|---|
-| Frontend | Vercel | Set `VITE_API_URL` to your API URL (no trailing `/api`). `vercel.json` already handles SPA routing. |
-| Backend | Render | Set all backend env vars. `CLIENT_ORIGIN` must be your Vercel URL. |
-| Database | Render / Neon / Supabase | Run `npx prisma migrate deploy` on release. |
-| Storage | AWS S3 | Turn on **Block all public access**. The app reads files via signed URLs. |
+| Part     | Suggested host           | Notes                                                                                                                       |
+| -------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Frontend | Vercel                   | Set `VITE_API_URL` to your API URL (no trailing `/api`). `vercel.json` already handles SPA routing.                         |
+| Backend  | Render                   | Set all backend env vars. `CLIENT_ORIGIN` must be your Vercel URL.                                                          |
+| Database | Render / Neon / Supabase | Start command: `npx prisma db push && node src/index.js`. Free Render databases expire after 30 days; Neon/Supabase do not. |
+| Storage  | AWS S3                   | Turn on **Block all public access**. The app reads files via signed URLs.                                                   |
 
 ---
 

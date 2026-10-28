@@ -1,38 +1,40 @@
 const jwt = require("jsonwebtoken");
+const prisma = require("../db");
 
+const getToken = (req) => {
+  const header = req.headers["authorization"];
+  if (!header || !header.startsWith("Bearer ")) return null;
+  return header.slice("Bearer ".length).trim() || null;
+};
+
+// Verifies the JWT, then loads the user's CURRENT role from the database so that
+// promotions, demotions and deleted accounts take effect immediately.
+// Tokens issued before the last password change are rejected too.
 const auth = async (req, res, next) => {
+  const token = getToken(req);
+  if (!token) {
+    return res.status(401).json({ message: "Access Denied: No token provided" });
+  }
   try {
-    // 1. Get token from header
-    const authHeader =
-      req.headers["authorization"] ||
-      req.headers["Authorization"] ||
-      req.header("Authorization");
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        message: "Access Denied: No token provided or invalid format",
-      });
+    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+    const user = await prisma.user.findUnique({
+      where: { id: String(payload.id) },
+      select: { id: true, email: true, role: true, passwordChangedAt: true },
+    });
+    if (!user) {
+      return res.status(401).json({ message: "Account no longer exists" });
     }
-
-    // 2. Extract the actual token string
-    const token = authHeader.slice("Bearer ".length).trim();
-    if (!token) {
-      return res.status(401).json({ message: "Access Denied: Empty token" });
+    if (user.passwordChangedAt && payload.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
+      return res.status(401).json({ message: "Session expired. Please log in again." });
     }
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT Verification Error: JWT_SECRET is not configured");
-      return res.status(500).json({ message: "Authentication is not configured on the server" });
-    }
-
-    // 3. Verify token
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-
-    // 4. Attach user info to request (this is critical for CampusShare uploads)
-    req.user = verified;
+    req.user = { id: user.id, email: user.email, role: user.role };
     next();
   } catch (error) {
-    console.error("JWT Verification Error:", error.message);
-    res.status(401).json({ message: "Invalid or expired token" });
+    if (["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(error.name)) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    console.error("AUTH_MIDDLEWARE_ERROR:", error);
+    res.status(500).json({ message: "Authentication check failed" });
   }
 };
 

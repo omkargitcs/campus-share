@@ -1,38 +1,27 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../middleware/multer");
+const auth = require("../middleware/auth");
+const { uploadLimiter } = require("../middleware/rateLimiters");
 const {
   uploadResource,
-  trackDownloadStat,
   getAllResources,
+  getAccessUrl,
   deleteResource,
-  incrementStats,
-  redirectToResource,
+  updateResourceStatus,
+  addBookmark,
+  removeBookmark,
 } = require("../controllers/resourceController");
 
-// Import the auth middleware to handle user session/token validation
-const auth = require("../middleware/auth");
+// Every resource route needs a logged-in user.
+router.use(auth);
 
-// --- POST Routes ---
-// Handles the PDF/document upload stream and saves it to the database
-router.post("/upload", auth, upload.single("file"), uploadResource);
-
-// Track download statistics for a specific resource
-router.post("/stats/:id", trackDownloadStat);
-
-// --- GET Routes ---
-// Fetch all campus resources
 router.get("/", getAllResources);
-
-// Securely redirect to the raw resource URL (e.g., AWS S3 bucket path)
-router.get("/download/:id", redirectToResource);
-
-// --- PATCH / UPDATE Routes ---
-// Increment view or download interaction metrics
-router.patch("/stats/:id", auth, incrementStats);
-
-// --- DELETE Routes ---
-// Securely remove a resource from the platform
-router.delete("/:id", auth, deleteResource);
+router.get("/:id/access", getAccessUrl); // short-lived signed link (also counts the open)
+router.post("/upload", uploadLimiter, upload.single("file"), uploadResource);
+router.put("/:id/bookmark", addBookmark);
+router.delete("/:id/bookmark", removeBookmark);
+router.patch("/:id/status", updateResourceStatus);
+router.delete("/:id", deleteResource);
 
 module.exports = router;

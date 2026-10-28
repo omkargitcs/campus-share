@@ -20,6 +20,47 @@ import NotificationBell from "./NotificationBell";
 import { useUser } from "../utils/UserContext";
 import { logout } from "../utils/auth";
 
+// Search box as its own component so the ref is handled by React, not read during Navbar's render.
+const SearchBox = ({
+  className,
+  placeholder,
+  inputRef,
+  searchTerm,
+  setSearchTerm,
+}) => (
+  <div className={`relative ${className}`}>
+    <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+    <input
+      ref={inputRef}
+      type="text"
+      value={searchTerm || ""}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          setSearchTerm("");
+          e.target.blur();
+        }
+      }}
+      placeholder={placeholder}
+      className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl pl-10 pr-12 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
+    />
+    {searchTerm ? (
+      <button
+        onClick={() => setSearchTerm("")}
+        className="absolute right-3 top-2.5 text-xs text-zinc-500 hover:text-zinc-300 transition"
+      >
+        Clear
+      </button>
+    ) : (
+      inputRef && (
+        <kbd className="hidden lg:block absolute right-3 top-2 text-[10px] text-zinc-600 border border-zinc-800 rounded px-1.5 py-0.5">
+          /
+        </kbd>
+      )
+    )}
+  </div>
+);
+
 // Search box and Upload button only appear on pages that pass the props (the Dashboard).
 const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
   const { user } = useUser();
@@ -41,7 +82,11 @@ const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
     if (!hasSearch) return;
     const onKey = (e) => {
       const tag = e.target.tagName;
-      const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable;
+      const typing =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        e.target.isContentEditable;
       if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -55,7 +100,8 @@ const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
   useEffect(() => {
     if (!isOpen) return;
     const onDown = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setIsOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target))
+        setIsOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -63,42 +109,10 @@ const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
 
   const linkClass = ({ isActive }) =>
     `px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
-      isActive ? "text-white bg-zinc-900" : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
+      isActive
+        ? "text-white bg-zinc-900"
+        : "text-zinc-400 hover:text-white hover:bg-zinc-900/60"
     }`;
-
-  const searchInput = (extraClass, placeholder, inputRef) => (
-    <div className={`relative ${extraClass}`}>
-      <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-      <input
-        ref={inputRef}
-        type="text"
-        value={searchTerm || ""}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            setSearchTerm("");
-            e.target.blur();
-          }
-        }}
-        placeholder={placeholder}
-        className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl pl-10 pr-12 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
-      />
-      {searchTerm ? (
-        <button
-          onClick={() => setSearchTerm("")}
-          className="absolute right-3 top-2.5 text-xs text-zinc-500 hover:text-zinc-300 transition"
-        >
-          Clear
-        </button>
-      ) : (
-        inputRef && (
-          <kbd className="hidden lg:block absolute right-3 top-2 text-[10px] text-zinc-600 border border-zinc-800 rounded px-1.5 py-0.5">
-            /
-          </kbd>
-        )
-      )}
-    </div>
-  );
 
   return (
     <>
@@ -126,7 +140,15 @@ const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
             </div>
           </div>
 
-          {hasSearch && searchInput("hidden md:flex flex-1 max-w-md", "Search resources, notes, PYQs...", searchRef)}
+          {hasSearch && (
+            <SearchBox
+              className="hidden md:flex flex-1 max-w-md"
+              placeholder="Search resources, notes, PYQs..."
+              inputRef={searchRef}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+            />
+          )}
           {!hasSearch && <div className="flex-1" />}
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -159,15 +181,21 @@ const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
                 <div className="absolute right-0 mt-2 w-56 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl p-2 z-20">
                   <div className="px-3 py-2 mb-2 border-b border-zinc-900">
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Account</p>
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                        Account
+                      </p>
                       {user?.role && (
                         <span className="text-[9px] bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black border border-blue-600/30">
                           {user.role}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-zinc-200 truncate font-medium mt-1">{name}</p>
-                    <p className="text-[11px] text-zinc-500 truncate">{email}</p>
+                    <p className="text-sm text-zinc-200 truncate font-medium mt-1">
+                      {name}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 truncate">
+                      {email}
+                    </p>
                   </div>
 
                   <button
@@ -210,7 +238,14 @@ const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
 
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-zinc-900 bg-[#09090b] px-4 py-4 flex flex-col gap-3">
-            {hasSearch && searchInput("w-full", "Search assets...", null)}
+            {hasSearch && (
+              <SearchBox
+                className="w-full"
+                placeholder="Search assets..."
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+              />
+            )}
 
             {onUploadClick && (
               <button
@@ -228,14 +263,26 @@ const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
               <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest px-3 mb-1 truncate">
                 {email || "Signed in"}
               </p>
-              <NavLink to="/dashboard" className={linkClass} onClick={() => setIsMobileMenuOpen(false)}>
+              <NavLink
+                to="/dashboard"
+                className={linkClass}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 <Library size={16} /> Library
               </NavLink>
-              <NavLink to="/teams" className={linkClass} onClick={() => setIsMobileMenuOpen(false)}>
+              <NavLink
+                to="/teams"
+                className={linkClass}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
                 <Users size={16} /> Teams
               </NavLink>
               {isTeacher && (
-                <NavLink to="/teacher" className={linkClass} onClick={() => setIsMobileMenuOpen(false)}>
+                <NavLink
+                  to="/teacher"
+                  className={linkClass}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   <GraduationCap size={16} /> Teacher
                 </NavLink>
               )}
@@ -271,8 +318,14 @@ const Navbar = ({ searchTerm, setSearchTerm, onUploadClick }) => {
       {/* Portaled to <body>: the nav's backdrop-blur would otherwise trap these fixed overlays inside the navbar box */}
       {createPortal(
         <>
-          <ProfileSidebar isOpen={isProfileOpen} onClose={() => setProfileOpen(false)} />
-          <SettingsModal isOpen={isSettingsOpen} onClose={() => setSettingsOpen(false)} />
+          <ProfileSidebar
+            isOpen={isProfileOpen}
+            onClose={() => setProfileOpen(false)}
+          />
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setSettingsOpen(false)}
+          />
         </>,
         document.body,
       )}

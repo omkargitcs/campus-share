@@ -21,10 +21,11 @@ const NotificationBell = () => {
 
   // initial load + poll every minute + refresh when the tab regains focus
   useEffect(() => {
-    load();
+    const first = setTimeout(load, 0);
     const timer = setInterval(load, 60000);
     window.addEventListener("focus", load);
     return () => {
+      clearTimeout(first);
       clearInterval(timer);
       window.removeEventListener("focus", load);
     };
@@ -47,7 +48,9 @@ const NotificationBell = () => {
 
   const markOne = async (n) => {
     if (n.isRead) return;
-    setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, isRead: true } : i)));
+    setItems((prev) =>
+      prev.map((i) => (i.id === n.id ? { ...i, isRead: true } : i)),
+    );
     setUnread((c) => Math.max(0, c - 1));
     try {
       await API.patch(`/notifications/${n.id}/read`);
@@ -120,7 +123,9 @@ const NotificationBell = () => {
                     }`}
                   />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-sm text-zinc-200 leading-snug">{n.message}</span>
+                    <span className="block text-sm text-zinc-200 leading-snug">
+                      {n.message}
+                    </span>
                     <span className="block text-[11px] text-zinc-600 mt-1">
                       {timeAgo(n.createdAt)}
                     </span>
